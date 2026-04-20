@@ -4,24 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getAllExhibitRules } from "@/lib/narrative-rules";
 import type { ExhibitId } from "@/lib/types";
 
-declare global {
-  interface Window {
-    MINDAR?: {
-      Compiler: new () => {
-        compileImageTargets: (
-          images: HTMLImageElement[],
-          onProgress?: (progress: number) => void,
-        ) => Promise<unknown>;
-        exportData: () => Promise<ArrayBuffer>;
-      };
-    };
-  }
-}
-
-const AFRAME_SCRIPT_URL = "https://aframe.io/releases/1.5.0/aframe.min.js";
-const MINDAR_CORE_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
-const MINDAR_AFRAME_SCRIPT_URL =
-  "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js";
+const AFRAME_SCRIPT_URL = "/vendor/aframe.min.js";
+const MINDAR_AFRAME_SCRIPT_URL = "/vendor/mindar-image-aframe.prod.js";
 const COMPILED_TARGETS_URL = "/targets/targets.mind";
 
 const scriptCache = new Map<string, Promise<void>>();
@@ -51,16 +35,6 @@ function loadScriptOnce(src: string): Promise<void> {
   return promise;
 }
 
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`加载 target image 失败：${url}`));
-    img.src = url;
-  });
-}
-
 async function hasCompiledTargets(): Promise<boolean> {
   try {
     const response = await fetch(COMPILED_TARGETS_URL, {
@@ -83,23 +57,6 @@ type MindArSystem = {
 type SceneWithMindAr = Element & {
   systems?: Record<string, MindArSystem>;
 };
-
-async function ensureCameraPermission(): Promise<void> {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error("当前浏览器不支持相机访问。");
-  }
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: {
-        ideal: "environment",
-      },
-    },
-    audio: false,
-  });
-
-  stream.getTracks().forEach((track) => track.stop());
-}
 
 function ensureInlineVideoPlayback(host: HTMLElement) {
   const video = host.querySelector("video");
@@ -129,12 +86,10 @@ export function MindArScanner({
 }) {
   const sceneHostRef = useRef<HTMLDivElement | null>(null);
   const cleanupSceneRef = useRef<(() => void) | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
   const lastDetectedRef = useRef<{ exhibitId: ExhibitId; at: number } | null>(null);
   const [scannerEnabled, setScannerEnabled] = useState(autoStart);
   const [status, setStatus] = useState<ScannerStatus>("idle");
   const [statusText, setStatusText] = useState("点击下方按钮启动 MindAR 扫描。");
-  const [compileProgress, setCompileProgress] = useState<number | null>(null);
   const [imageTargetSrc, setImageTargetSrc] = useState<string | null>(null);
 
   const targetRules = useMemo(
@@ -148,9 +103,6 @@ export function MindArScanner({
   useEffect(() => {
     return () => {
       cleanupSceneRef.current?.();
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-      }
     };
   }, []);
 
@@ -169,10 +121,8 @@ export function MindArScanner({
     async function prepareMindAr() {
       try {
         setStatus("loading");
-        setStatusText("正在申请相机权限并加载 MindAR...");
-        setCompileProgress(null);
+        setStatusText("正在加载 MindAR 扫描环境...");
 
-        await ensureCameraPermission();
         await loadScriptOnce(AFRAME_SCRIPT_URL);
         await loadScriptOnce(MINDAR_AFRAME_SCRIPT_URL);
 
@@ -188,45 +138,7 @@ export function MindArScanner({
           setStatusText("已加载预编译 targets.mind，等待识别目标图。");
           return;
         }
-
-        await loadScriptOnce(MINDAR_CORE_SCRIPT_URL);
-
-        if (cancelled) {
-          return;
-        }
-
-        if (!window.MINDAR?.Compiler) {
-          throw new Error("MindAR 编译器未加载成功。");
-        }
-
-        setStatusText("未找到 targets.mind，正在使用 8 张 target image 临时编译...");
-
-        const images = await Promise.all(
-          targetRules.map((rule) => loadImage(rule.targetImagePath)),
-        );
-        const compiler = new window.MINDAR.Compiler();
-        await compiler.compileImageTargets(images, (progress) => {
-          if (!cancelled) {
-            setCompileProgress(progress);
-            setStatusText(`正在编译 target image：${progress.toFixed(0)}%`);
-          }
-        });
-
-        const exportedBuffer = await compiler.exportData();
-        if (objectUrlRef.current) {
-          URL.revokeObjectURL(objectUrlRef.current);
-        }
-        objectUrlRef.current = URL.createObjectURL(
-          new Blob([exportedBuffer], { type: "application/octet-stream" }),
-        );
-
-        if (cancelled) {
-          return;
-        }
-
-        setImageTargetSrc(objectUrlRef.current);
-        setStatus("loading");
-        setStatusText("已完成临时编译，正在启动相机识别...");
+        throw new Error("未找到 /public/targets/targets.mind，无法启动本地 MindAR 扫描。");
       } catch (error) {
         if (cancelled) {
           return;
@@ -387,11 +299,6 @@ export function MindArScanner({
       >
         <div className="absolute inset-x-3 top-3 z-20 rounded-2xl bg-[rgba(16,17,16,0.72)] px-3 py-2 text-xs leading-5 text-white backdrop-blur">
           <p>{statusText}</p>
-          {compileProgress !== null ? (
-            <p className="mt-1 text-[11px] text-slate-300">
-              临时编译进度：{compileProgress.toFixed(0)}%
-            </p>
-          ) : null}
         </div>
       </div>
     </div>
