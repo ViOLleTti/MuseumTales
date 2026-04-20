@@ -16,12 +16,12 @@ import {
 } from "@/lib/narrative-rules";
 import type { DialogueCheckResult } from "@/lib/narrative-types";
 import type { NpcId, RoleId } from "@/lib/types";
-import girlSmile from "@/assets/png/图层_0.png";
-import boyNeutral from "@/assets/png/图层_1.png";
-import guardNeutral from "@/assets/png/图层_2.png";
-import girlNeutral from "@/assets/png/图层_3.png";
-import boySmile from "@/assets/png/图层_4.png";
-import guardSmile from "@/assets/png/图层_10.png";
+import girlSmile from "@/assets/png/npc_0.png";
+import boyNeutral from "@/assets/png/npc_1.png";
+import guardNeutral from "@/assets/png/npc_2.png";
+import girlNeutral from "@/assets/png/npc_3.png";
+import boySmile from "@/assets/png/npc_4.png";
+import guardSmile from "@/assets/png/npc_10.png";
 
 const NPC_SCAN_HINTS: Record<NpcId, string> = {
   N1: "也许先去看看别的展品，会有更清楚的线索浮出来，到时再聊可能更容易串起故事。",
