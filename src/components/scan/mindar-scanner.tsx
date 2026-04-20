@@ -178,9 +178,7 @@ export function MindArScanner({
         ${targetRules
           .map(
             (rule, index) => `
-              <a-entity data-exhibit-id="${rule.id}" mindar-image-target="targetIndex: ${index}">
-                <a-plane color="#cdee71" opacity="0.35" width="1" height="0.65" position="0 0 0"></a-plane>
-              </a-entity>
+              <a-entity data-exhibit-id="${rule.id}" mindar-image-target="targetIndex: ${index}"></a-entity>
             `,
           )
           .join("")}
