@@ -87,6 +87,7 @@ export function MindArScanner({
   const sceneHostRef = useRef<HTMLDivElement | null>(null);
   const cleanupSceneRef = useRef<(() => void) | null>(null);
   const lastDetectedRef = useRef<{ exhibitId: ExhibitId; at: number } | null>(null);
+  const onDetectRef = useRef(onDetect);
   const [scannerEnabled, setScannerEnabled] = useState(autoStart);
   const [status, setStatus] = useState<ScannerStatus>("idle");
   const [statusText, setStatusText] = useState("点击下方按钮启动 MindAR 扫描。");
@@ -99,6 +100,10 @@ export function MindArScanner({
       ),
     [],
   );
+
+  useEffect(() => {
+    onDetectRef.current = onDetect;
+  }, [onDetect]);
 
   useEffect(() => {
     return () => {
@@ -207,7 +212,7 @@ export function MindArScanner({
         lastDetectedRef.current = { exhibitId, at: now };
         setStatus("ready");
         setStatusText(`识别成功：${exhibitId}`);
-        onDetect(exhibitId);
+        onDetectRef.current(exhibitId);
       };
 
       entity.addEventListener("targetFound", handleTargetFound);
@@ -273,7 +278,7 @@ export function MindArScanner({
       cleanupSceneRef.current?.();
       cleanupSceneRef.current = null;
     };
-  }, [imageTargetSrc, onDetect, scannerEnabled, targetRules]);
+  }, [imageTargetSrc, scannerEnabled, targetRules]);
 
   return (
     <div className="space-y-4">

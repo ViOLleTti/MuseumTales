@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MindArScanner } from "@/components/scan/mindar-scanner";
 import { CluePill, PageShell, Panel, StatusBadge } from "@/components/game-ui";
 import { scanExhibit, useGameStore } from "@/lib/game-store";
@@ -27,6 +27,11 @@ export default function ScanPage() {
     }
   }, [lastScannedExhibitId]);
 
+  const handleDetectedExhibit = useCallback((exhibitId: ExhibitId) => {
+    scanExhibit(exhibitId);
+    setSelectedExhibitId(exhibitId);
+  }, []);
+
   if (!roleId) {
     return null;
   }
@@ -35,11 +40,6 @@ export default function ScanPage() {
   const currentScanResult = selectedExhibitId
     ? scanExhibitResult(selectedExhibitId, collectedClueIds)
     : null;
-
-  function handleDetectedExhibit(exhibitId: ExhibitId) {
-    scanExhibit(exhibitId);
-    setSelectedExhibitId(exhibitId);
-  }
 
   return (
     <PageShell
