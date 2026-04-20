@@ -75,6 +75,49 @@ async function hasCompiledTargets(): Promise<boolean> {
 
 type ScannerStatus = "idle" | "loading" | "ready" | "error";
 
+type MindArSystem = {
+  start?: () => Promise<void> | void;
+  stop?: () => Promise<void> | void;
+};
+
+type SceneWithMindAr = Element & {
+  systems?: Record<string, MindArSystem>;
+};
+
+async function ensureCameraPermission(): Promise<void> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("当前浏览器不支持相机访问。");
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: {
+        ideal: "environment",
+      },
+    },
+    audio: false,
+  });
+
+  stream.getTracks().forEach((track) => track.stop());
+}
+
+function ensureInlineVideoPlayback(host: HTMLElement) {
+  const video = host.querySelector("video");
+  if (!video) {
+    return;
+  }
+
+  video.setAttribute("playsinline", "true");
+  video.setAttribute("webkit-playsinline", "true");
+  video.setAttribute("muted", "true");
+  video.setAttribute("autoplay", "true");
+  video.playsInline = true;
+  video.muted = true;
+  void video.play().catch(() => {
+    // Safari may block autoplay until the underlying AR system fully starts.
+  });
+}
+
 export function MindArScanner({
   onDetect,
 }: {
@@ -122,11 +165,11 @@ export function MindArScanner({
     async function prepareMindAr() {
       try {
         setStatus("loading");
-        setStatusText("正在加载 MindAR 与相机扫描环境...");
+        setStatusText("正在申请相机权限并加载 MindAR...");
         setCompileProgress(null);
 
+        await ensureCameraPermission();
         await loadScriptOnce(AFRAME_SCRIPT_URL);
-        await loadScriptOnce(MINDAR_CORE_SCRIPT_URL);
         await loadScriptOnce(MINDAR_AFRAME_SCRIPT_URL);
 
         if (cancelled) {
@@ -139,6 +182,12 @@ export function MindArScanner({
           setImageTargetSrc(COMPILED_TARGETS_URL);
           setStatus("ready");
           setStatusText("已加载预编译 targets.mind，等待识别目标图。");
+          return;
+        }
+
+        await loadScriptOnce(MINDAR_CORE_SCRIPT_URL);
+
+        if (cancelled) {
           return;
         }
 
@@ -172,8 +221,8 @@ export function MindArScanner({
         }
 
         setImageTargetSrc(objectUrlRef.current);
-        setStatus("ready");
-        setStatusText("已完成临时编译，等待识别目标图。");
+        setStatus("loading");
+        setStatusText("已完成临时编译，正在启动相机识别...");
       } catch (error) {
         if (cancelled) {
           return;
@@ -206,7 +255,8 @@ export function MindArScanner({
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
         renderer="colorManagement: true, physicallyCorrectLights"
-        mindar-image="imageTargetSrc: ${escapedSrc}; autoStart: true; uiLoading: yes; uiScanning: yes; maxTrack: 1;"
+        style="width: 100%; height: 100%; position: relative;"
+        mindar-image="imageTargetSrc: ${escapedSrc}; autoStart: false; uiLoading: yes; uiScanning: yes; maxTrack: 1;"
       >
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         ${targetRules
@@ -221,10 +271,11 @@ export function MindArScanner({
       </a-scene>
     `;
 
-    const scene = host.querySelector("a-scene");
+    const scene = host.querySelector("a-scene") as SceneWithMindAr | null;
     const entities = Array.from(host.querySelectorAll("[data-exhibit-id]"));
 
     const cleanupCallbacks: Array<() => void> = [];
+    let pollingTimer: number | null = null;
 
     entities.forEach((entity) => {
       const exhibitId = entity.getAttribute("data-exhibit-id") as ExhibitId;
@@ -256,10 +307,50 @@ export function MindArScanner({
       setStatusText("MindAR 运行出错，请检查相机权限或 target 文件。");
     };
 
+    const handleSceneReady = () => {
+      setStatus("ready");
+      setStatusText("相机已启动，等待识别目标图。");
+      ensureInlineVideoPlayback(host);
+    };
+
+    const handleSceneLoaded = () => {
+      const arSystem = scene?.systems?.["mindar-image-system"];
+      if (!arSystem?.start) {
+        setStatus("error");
+        setStatusText("MindAR 系统没有正确初始化。");
+        return;
+      }
+
+      setStatus("loading");
+      setStatusText("正在启动相机视频流...");
+
+      void Promise.resolve(arSystem.start())
+        .then(() => {
+          ensureInlineVideoPlayback(host);
+          if (pollingTimer !== null) {
+            window.clearInterval(pollingTimer);
+          }
+          pollingTimer = window.setInterval(() => ensureInlineVideoPlayback(host), 500);
+        })
+        .catch(() => {
+          setStatus("error");
+          setStatusText("MindAR 启动失败，请刷新后重试。");
+        });
+    };
+
+    scene?.addEventListener("loaded", handleSceneLoaded);
+    cleanupCallbacks.push(() => scene?.removeEventListener("loaded", handleSceneLoaded));
+    scene?.addEventListener("arReady", handleSceneReady);
+    cleanupCallbacks.push(() => scene?.removeEventListener("arReady", handleSceneReady));
     scene?.addEventListener("arError", handleSceneError);
     cleanupCallbacks.push(() => scene?.removeEventListener("arError", handleSceneError));
 
     cleanupSceneRef.current = () => {
+      if (pollingTimer !== null) {
+        window.clearInterval(pollingTimer);
+        pollingTimer = null;
+      }
+      scene?.systems?.["mindar-image-system"]?.stop?.();
       cleanupCallbacks.forEach((cleanup) => cleanup());
       host.innerHTML = "";
     };
