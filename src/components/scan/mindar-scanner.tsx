@@ -120,14 +120,18 @@ function ensureInlineVideoPlayback(host: HTMLElement) {
 
 export function MindArScanner({
   onDetect,
+  autoStart = false,
+  showControls = true,
 }: {
   onDetect: (exhibitId: ExhibitId) => void;
+  autoStart?: boolean;
+  showControls?: boolean;
 }) {
   const sceneHostRef = useRef<HTMLDivElement | null>(null);
   const cleanupSceneRef = useRef<(() => void) | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const lastDetectedRef = useRef<{ exhibitId: ExhibitId; at: number } | null>(null);
-  const [scannerEnabled, setScannerEnabled] = useState(false);
+  const [scannerEnabled, setScannerEnabled] = useState(autoStart);
   const [status, setStatus] = useState<ScannerStatus>("idle");
   const [statusText, setStatusText] = useState("点击下方按钮启动 MindAR 扫描。");
   const [compileProgress, setCompileProgress] = useState<number | null>(null);
@@ -256,7 +260,7 @@ export function MindArScanner({
         device-orientation-permission-ui="enabled: false"
         renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
         style="width: 100%; height: 100%; position: relative;"
-        mindar-image="imageTargetSrc: ${escapedSrc}; autoStart: false; uiLoading: yes; uiScanning: yes; maxTrack: 1;"
+        mindar-image="imageTargetSrc: ${escapedSrc}; autoStart: false; uiLoading: yes; uiScanning: no; maxTrack: 1;"
       >
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         ${targetRules
@@ -363,36 +367,33 @@ export function MindArScanner({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={() => setScannerEnabled((value) => !value)}
-          className="rounded-2xl bg-[#cdee71] px-5 py-3 text-sm font-semibold text-[#101110] transition hover:bg-[#d8f290]"
-        >
-          {scannerEnabled ? "关闭 MindAR 扫描" : "启动 MindAR 扫描"}
-        </button>
-      </div>
-
-      <div className="rounded-2xl bg-[#202521] p-4 text-sm text-slate-300">
-        <p>{statusText}</p>
-        {compileProgress !== null ? (
-          <p className="mt-2 text-xs text-slate-400">
-            临时编译进度：{compileProgress.toFixed(0)}%
-          </p>
-        ) : null}
-        {status === "ready" ? (
-          <p className="mt-2 text-xs text-slate-400">
-            target 顺序固定为 E1-E8，对应 `/targets/` 目录中的 8 张 jpeg。
-          </p>
-        ) : null}
-      </div>
+      {showControls ? (
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setScannerEnabled((value) => !value)}
+            className="rounded-2xl bg-[#cdee71] px-5 py-3 text-sm font-semibold text-[#101110] transition hover:bg-[#d8f290]"
+          >
+            {scannerEnabled ? "关闭 MindAR 扫描" : "启动 MindAR 扫描"}
+          </button>
+        </div>
+      ) : null}
 
       <div
         ref={sceneHostRef}
         className={`mindar-scene-host relative overflow-hidden rounded-[2rem] border-4 border-dashed border-emerald-500 bg-slate-950/90 ${
           scannerEnabled ? "min-h-[24rem]" : "hidden"
         }`}
-      />
+      >
+        <div className="absolute inset-x-3 top-3 z-20 rounded-2xl bg-[rgba(16,17,16,0.72)] px-3 py-2 text-xs leading-5 text-white backdrop-blur">
+          <p>{statusText}</p>
+          {compileProgress !== null ? (
+            <p className="mt-1 text-[11px] text-slate-300">
+              临时编译进度：{compileProgress.toFixed(0)}%
+            </p>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
