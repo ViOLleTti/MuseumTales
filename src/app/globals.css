@@ -129,6 +129,36 @@ a {
   animation: pulse-ring 2s ease-in-out infinite;
 }
 
+.mindar-scene-host {
+  position: relative;
+  isolation: isolate;
+}
+
+.mindar-scene-host > a-scene,
+.mindar-scene-host video,
+.mindar-scene-host canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.mindar-scene-host > a-scene {
+  background: transparent !important;
+}
+
+.mindar-scene-host video {
+  object-fit: cover !important;
+  z-index: 0 !important;
+  background: transparent !important;
+}
+
+.mindar-scene-host canvas {
+  z-index: 1 !important;
+  background: transparent !important;
+}
+
 @media (max-width: 520px) {
   .phone-stage {
     padding: 0;

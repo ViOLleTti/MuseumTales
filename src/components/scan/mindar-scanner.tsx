@@ -254,7 +254,7 @@ export function MindArScanner({
         color-space="sRGB"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
-        renderer="colorManagement: true, physicallyCorrectLights"
+        renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
         style="width: 100%; height: 100%; position: relative;"
         mindar-image="imageTargetSrc: ${escapedSrc}; autoStart: false; uiLoading: yes; uiScanning: yes; maxTrack: 1;"
       >
@@ -389,7 +389,7 @@ export function MindArScanner({
 
       <div
         ref={sceneHostRef}
-        className={`overflow-hidden rounded-[2rem] border-4 border-dashed border-emerald-500 bg-slate-950/90 ${
+        className={`mindar-scene-host relative overflow-hidden rounded-[2rem] border-4 border-dashed border-emerald-500 bg-slate-950/90 ${
           scannerEnabled ? "min-h-[24rem]" : "hidden"
         }`}
       />
