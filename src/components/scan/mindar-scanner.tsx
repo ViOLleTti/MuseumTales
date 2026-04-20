@@ -172,7 +172,7 @@ export function MindArScanner({
         device-orientation-permission-ui="enabled: false"
         renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
         style="width: 100%; height: 100%; position: relative;"
-        mindar-image="imageTargetSrc: ${escapedSrc}; autoStart: false; uiLoading: yes; uiScanning: no; maxTrack: 1;"
+        mindar-image="imageTargetSrc: ${escapedSrc}; autoStart: false; uiLoading: no; uiScanning: no; maxTrack: 1;"
       >
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         ${targetRules
