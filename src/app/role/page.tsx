@@ -158,7 +158,7 @@ export default function RolePage() {
           <div className={`absolute -bottom-[5%] -right-[15%] h-[350px] w-[350px] rounded-full ${shadowInsetCircle}`} style={{ backgroundColor: COLORS.bg }} />
         </div>
 
-        <main className="relative z-10 flex min-h-full flex-col overflow-y-auto bg-[#f1efe7] pb-32 role-scrollbar-hide">
+        <main className="relative z-10 flex min-h-full flex-col overflow-y-auto pb-32 role-scrollbar-hide">
           <div className="px-7 pb-6 pt-16">
             <div
               className={`flex flex-col items-center gap-4 transition-all duration-700 ease-out ${
