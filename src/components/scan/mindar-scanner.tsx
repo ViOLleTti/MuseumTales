@@ -79,10 +79,14 @@ export function MindArScanner({
   onDetect,
   autoStart = false,
   showControls = true,
+  hostClassName = "",
+  statusClassName = "",
 }: {
   onDetect: (exhibitId: ExhibitId) => void;
   autoStart?: boolean;
   showControls?: boolean;
+  hostClassName?: string;
+  statusClassName?: string;
 }) {
   const sceneHostRef = useRef<HTMLDivElement | null>(null);
   const cleanupSceneRef = useRef<(() => void) | null>(null);
@@ -92,6 +96,9 @@ export function MindArScanner({
   const [status, setStatus] = useState<ScannerStatus>("idle");
   const [statusText, setStatusText] = useState("点击下方按钮启动 MindAR 扫描。");
   const [imageTargetSrc, setImageTargetSrc] = useState<string | null>(null);
+  const resolvedHostClassName =
+    hostClassName || "rounded-[2rem] border-4 border-dashed border-emerald-500 bg-slate-950/90";
+  const resolvedStatusClassName = statusClassName || "bg-[rgba(16,17,16,0.72)] text-white";
 
   const targetRules = useMemo(
     () =>
@@ -296,11 +303,13 @@ export function MindArScanner({
 
       <div
         ref={sceneHostRef}
-        className={`mindar-scene-host relative overflow-hidden rounded-[2rem] border-4 border-dashed border-emerald-500 bg-slate-950/90 ${
+        className={`mindar-scene-host relative overflow-hidden ${
           scannerEnabled ? "min-h-[24rem]" : "hidden"
-        }`}
+        } ${resolvedHostClassName}`}
       >
-        <div className="absolute inset-x-3 top-3 z-20 rounded-2xl bg-[rgba(16,17,16,0.72)] px-3 py-2 text-xs leading-5 text-white backdrop-blur">
+        <div
+          className={`absolute inset-x-3 top-3 z-20 rounded-2xl px-3 py-2 text-xs leading-5 backdrop-blur ${resolvedStatusClassName}`}
+        >
           <p>{statusText}</p>
         </div>
       </div>
