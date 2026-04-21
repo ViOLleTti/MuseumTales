@@ -3,18 +3,17 @@
 import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyDialogueResult, useGameStore } from "@/lib/game-store";
 import { NPCS, ROLES } from "@/lib/game-data";
 import {
   checkEndingUnlock,
   checkNpcDialogueTrigger,
   getExhibitRule,
-  getClueKeyword,
   getNpcFallbackDialogue,
-  hasRemainingDialogueTriggers,
+  getRoleRuleSet,
 } from "@/lib/narrative-rules";
-import type { DialogueCheckResult } from "@/lib/narrative-types";
+import type { DialogueCheckResult, DialogueGameEvent } from "@/lib/narrative-types";
 import type { NpcId, RoleId } from "@/lib/types";
 import girlSmile from "@/assets/png/npc_0.png";
 import boyNeutral from "@/assets/png/npc_1.png";
@@ -27,6 +26,25 @@ const NPC_SCAN_HINTS: Record<NpcId, string> = {
   N1: "也许先去看看别的展品，会有更清楚的线索浮出来，到时再聊可能更容易串起故事。",
   N2: "你可以先沿着展品再找一点观察线索，说不定下一次回来问，我会更想倾诉点什么。",
   N3: "不妨先去展柜那边转转，等你抓到新的展品线索，我们再继续往下说。",
+};
+
+const DIALOGUE_SECONDARY_TAGS: Record<string, [string, string]> = {
+  "P1-E1-N1-F10": ["库房", "初心"],
+  "P1-E7-N1-F11": ["书法", "船模"],
+  "P1-E2-N2-F12": ["成长", "见证"],
+  "P1-E8-N3-F13": ["水路", "思念"],
+  "P2-E4-N1-F14": ["吉祥", "双关"],
+  "P2-E7-N1-F16": ["字面", "语气"],
+  "P2-E7-N2-F15": ["语气", "留白"],
+  "P2-E7-N3-F17": ["气力", "印刷字"],
+  "P3-E3-N1-F18": ["创造", "智慧"],
+  "P3-E8-N3-F21": ["异乡", "故乡"],
+  "P3-E7-N2-F19": ["线条", "呼吸"],
+  "P3-E5-N2-F20": ["规则", "样子"],
+  "P3-E6-N1-F22": ["协作", "征服"],
+  "P4-E7-N1-F23": ["礼物", "旅程"],
+  "P4-E4-N2-F24": ["瓷器", "停下"],
+  "P4-E5-N3-F25": ["挪动", "参与"],
 };
 
 function buildScanHint(roleId: RoleId, npcId: NpcId): DialogueCheckResult {
@@ -44,31 +62,45 @@ type VisualNpcConfig = {
   activeImage: StaticImageData;
   neutralImage: StaticImageData;
   bubbleAlign: "left" | "center" | "right";
+  bubbleAnchorOffsetTop: number;
   imageClassName: string;
-  bubblePositionClassName: string;
 };
+
+type BubblePosition = {
+  left: number;
+  top: number;
+  align: "left" | "center" | "right";
+};
+
+const BUBBLE_WIDTH = 230;
+const BUBBLE_SIDE_PADDING = 8;
+const BUBBLE_TAIL_RATIOS = {
+  left: 0.25,
+  center: 0.5,
+  right: 0.75,
+} as const;
 
 const VISUAL_NPCS: Record<NpcId, VisualNpcConfig> = {
   N1: {
     activeImage: girlSmile,
     neutralImage: girlNeutral,
     bubbleAlign: "left",
+    bubbleAnchorOffsetTop: 70,
     imageClassName: "w-[160%] h-[85%] max-w-none",
-    bubblePositionClassName: "left-1 bottom-[calc(100%-70px)]",
   },
   N2: {
     activeImage: boySmile,
     neutralImage: boyNeutral,
     bubbleAlign: "center",
+    bubbleAnchorOffsetTop: 30,
     imageClassName: "w-[190%] h-[92%] max-w-none",
-    bubblePositionClassName: "left-1/2 bottom-[calc(100%-30px)] -translate-x-1/2",
   },
   N3: {
     activeImage: guardSmile,
     neutralImage: guardNeutral,
     bubbleAlign: "right",
+    bubbleAnchorOffsetTop: 70,
     imageClassName: "w-[160%] h-[85%] max-w-none",
-    bubblePositionClassName: "right-1 bottom-[calc(100%-70px)]",
   },
 };
 
@@ -90,6 +122,35 @@ function getDialogueTitle(result: DialogueCheckResult, npcName: string, exhibitN
   }
 
   return exhibitName ? `关于 ${exhibitName}，${npcName} 的回应` : `${npcName} 的回应`;
+}
+
+function getNpcSpeechLabel(npcId: NpcId) {
+  return NPCS.find((npc) => npc.id === npcId)?.name ?? npcId;
+}
+
+function getDialogueLogResponse(roleId: RoleId, event: DialogueGameEvent) {
+  const trigger = getRoleRuleSet(roleId).triggers.find((entry) => entry.triggerId === event.triggerId);
+  return trigger?.response ?? "这段有效对话已记录。";
+}
+
+function getDialogueLogTitle(roleId: RoleId, event: DialogueGameEvent) {
+  const trigger = getRoleRuleSet(roleId).triggers.find((entry) => entry.triggerId === event.triggerId);
+  const exhibitName = trigger ? getExhibitRule(trigger.exhibitId).name : getExhibitRule(event.exhibitId).name;
+  return `关于 ${exhibitName}， ${getNpcSpeechLabel(event.npcId)} 说 ：`;
+}
+
+function getDialogueLogChips(roleId: RoleId, event: DialogueGameEvent) {
+  const trigger = getRoleRuleSet(roleId).triggers.find((entry) => entry.triggerId === event.triggerId);
+  const primaryKeyword = trigger?.keywords[0] ?? "线索";
+  const secondaryKeywords = DIALOGUE_SECONDARY_TAGS[event.triggerId] ?? [
+    trigger?.keywords[1] ?? "细节",
+    getExhibitRule(event.exhibitId).highlightKeyword,
+  ];
+
+  return {
+    primaryKeyword,
+    secondaryKeywords,
+  };
 }
 
 function SoftChip({
@@ -146,12 +207,16 @@ function CloudBubble({
 
 export default function NpcPage() {
   const router = useRouter();
+  const mainRef = useRef<HTMLElement | null>(null);
+  const npcButtonRefs = useRef<Partial<Record<NpcId, HTMLButtonElement | null>>>({});
   const roleId = useGameStore((state) => state.selectedRole);
   const collectedClueIds = useGameStore((state) => state.collectedClueIds);
   const scannedExhibits = useGameStore((state) => state.scannedExhibits);
   const consumedTriggerIds = useGameStore((state) => state.consumedTriggerIds);
   const lastScannedExhibitId = useGameStore((state) => state.lastScannedExhibitId);
+  const eventHistory = useGameStore((state) => state.eventHistory);
   const [dialogueResult, setDialogueResult] = useState<DialogueCheckResult | null>(null);
+  const [bubblePosition, setBubblePosition] = useState<BubblePosition | null>(null);
 
   const unlockedEnding = useMemo(
     () => (roleId ? checkEndingUnlock(roleId, collectedClueIds).ending : undefined),
@@ -163,6 +228,44 @@ export default function NpcPage() {
       router.replace("/role");
     }
   }, [roleId, router]);
+
+  const updateBubblePosition = useCallback((npcId: NpcId, anchorElement?: HTMLButtonElement | null) => {
+    const mainElement = mainRef.current;
+    const buttonElement = anchorElement ?? npcButtonRefs.current[npcId];
+    if (!mainElement || !buttonElement) {
+      setBubblePosition(null);
+      return;
+    }
+
+    const mainRect = mainElement.getBoundingClientRect();
+    const buttonRect = buttonElement.getBoundingClientRect();
+    const visualNpc = VISUAL_NPCS[npcId];
+    const tailRatio = BUBBLE_TAIL_RATIOS[visualNpc.bubbleAlign];
+    const anchorX = buttonRect.left - mainRect.left + mainElement.scrollLeft + buttonRect.width * tailRatio;
+    const maxLeft = Math.max(BUBBLE_SIDE_PADDING, mainElement.clientWidth - BUBBLE_WIDTH - BUBBLE_SIDE_PADDING);
+    const left = Math.min(maxLeft, Math.max(BUBBLE_SIDE_PADDING, anchorX - BUBBLE_WIDTH * tailRatio));
+    const top =
+      buttonRect.top - mainRect.top + mainElement.scrollTop + visualNpc.bubbleAnchorOffsetTop - 6;
+
+    setBubblePosition({
+      left,
+      top,
+      align: visualNpc.bubbleAlign,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!dialogueResult) {
+      setBubblePosition(null);
+      return;
+    }
+
+    const handleResize = () => updateBubblePosition(dialogueResult.npcId);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [dialogueResult, updateBubblePosition]);
 
   if (!roleId) {
     return null;
@@ -177,17 +280,14 @@ export default function NpcPage() {
       P4: "志愿者",
     }[currentRoleId] ?? ROLES.find((role) => role.id === currentRoleId)?.title ?? currentRoleId;
   const currentExhibit = lastScannedExhibitId ? getExhibitRule(lastScannedExhibitId) : null;
-  const hasRemainingTriggers = hasRemainingDialogueTriggers(
-    currentRoleId,
-    scannedExhibits,
-    consumedTriggerIds,
-  );
+  const dialogueHistory = eventHistory.filter((event): event is DialogueGameEvent => event.type === "dialogue");
+  const latestDialogueEvent = dialogueHistory.at(-1) ?? null;
   const activeNpcId = dialogueResult?.npcId ?? null;
 
-  function handleNpcClick(npcId: NpcId) {
+  function handleNpcClick(npcId: NpcId, anchorElement: HTMLButtonElement | null) {
     let result: DialogueCheckResult;
 
-    if (!currentExhibit || !hasRemainingTriggers) {
+    if (!currentExhibit) {
       result = buildScanHint(currentRoleId, npcId);
     } else {
       const checkedResult = checkNpcDialogueTrigger({
@@ -208,6 +308,7 @@ export default function NpcPage() {
     }
 
     setDialogueResult(result);
+    updateBubblePosition(npcId, anchorElement);
     if (result.isValidTrigger) {
       applyDialogueResult(result);
     }
@@ -216,8 +317,11 @@ export default function NpcPage() {
   return (
     <div className="phone-stage bg-[#e8e5dd]">
       <div className="phone-shell border-none bg-[#f1efe7] shadow-[12px_12px_28px_#d5d2c8,-10px_-10px_26px_#ffffff]">
-        <main className="relative flex min-h-full flex-col overflow-x-visible overflow-y-auto bg-[#f1efe7] text-[#424542]">
-          <div className="sticky top-0 z-10 bg-[#f1efe7]/92 px-4 pb-4 pt-6 backdrop-blur">
+        <main
+          ref={mainRef}
+          className="relative isolate flex min-h-full flex-col overflow-x-hidden overflow-y-auto bg-[#f1efe7] text-[#424542]"
+        >
+          <div className="sticky top-0 z-0 bg-[#f1efe7]/92 px-4 pb-4 pt-6">
             <div className="mx-auto max-w-[290px] rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
               <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">Investigation</p>
               <h1 className="mt-1 text-[15px] font-bold tracking-[0.12em] text-[#424542]">展馆事件</h1>
@@ -231,8 +335,25 @@ export default function NpcPage() {
             </div>
           </div>
 
-          <div className="relative z-30 flex-1 overflow-visible px-4 pb-6">
-            <section className="relative z-30 mt-1 overflow-visible">
+          {dialogueResult && bubblePosition ? (
+            <div className="pointer-events-none absolute inset-0 z-[300] overflow-visible">
+              <div
+                className="absolute w-[230px]"
+                style={{
+                  left: `${bubblePosition.left}px`,
+                  top: `${bubblePosition.top}px`,
+                  transform: "translateY(-100%)",
+                }}
+              >
+                <CloudBubble align={bubblePosition.align}>
+                  {dialogueResult.response ?? dialogueResult.fallbackDialogue}
+                </CloudBubble>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="relative z-[80] flex-1 overflow-x-hidden overflow-y-visible px-4 pb-6">
+            <section className="relative z-[120] isolate mt-1 overflow-visible">
               <div className="relative rounded-[36px] px-3 pb-3 pt-5">
                 <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[36px] bg-[#e8e5dd] shadow-[inset_0_10px_20px_rgba(213,210,200,0.55)]">
                   <div className="absolute -left-[15%] -top-[10%] h-[350px] w-[350px] rounded-full bg-[#e8e5dd] opacity-90 shadow-[inset_15px_15px_40px_#d5d2c8,inset_-15px_-15px_40px_#ffffff]" />
@@ -259,18 +380,13 @@ export default function NpcPage() {
                       <button
                         key={npc.id}
                         type="button"
-                        onClick={() => handleNpcClick(npcId)}
+                        ref={(element) => {
+                          npcButtonRefs.current[npcId] = element;
+                        }}
+                        onClick={(event) => handleNpcClick(npcId, event.currentTarget)}
                         className="relative flex h-full w-1/3 cursor-pointer flex-col items-center overflow-visible bg-transparent text-left"
                       >
                         <div className="absolute inset-x-2 bottom-4 h-20 rounded-full bg-[#d9d4ca]/60 blur-xl" />
-
-                        {dialogueResult?.npcId === npcId ? (
-                          <div className={`absolute z-[70] w-[230px] origin-bottom pointer-events-none ${visualNpc.bubblePositionClassName}`}>
-                            <CloudBubble align={visualNpc.bubbleAlign}>
-                              {dialogueResult.response ?? dialogueResult.fallbackDialogue}
-                            </CloudBubble>
-                          </div>
-                        ) : null}
 
                         <Image
                           src={currentImage}
@@ -327,18 +443,26 @@ export default function NpcPage() {
               ) : null}
 
               <div className="mt-4 rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                <p className="text-sm font-semibold text-[#414640]">本轮已收集线索</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {collectedClueIds.length ? (
-                    collectedClueIds.map((clueId) => (
-                      <SoftChip key={clueId} tone="cream-accent">
-                        {getClueKeyword(clueId)}
+                {latestDialogueEvent ? (
+                  <>
+                    <p className="text-sm font-semibold text-[#414640]">
+                      {getDialogueLogTitle(currentRoleId, latestDialogueEvent)}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[#6d756c]">
+                      {getDialogueLogResponse(currentRoleId, latestDialogueEvent)}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <SoftChip tone="cream-accent">
+                        {getDialogueLogChips(currentRoleId, latestDialogueEvent).primaryKeyword}
                       </SoftChip>
-                    ))
-                  ) : (
-                    <p className="text-sm leading-6 text-[#7e857b]">还没有有效线索，先尝试点击上方人物。</p>
-                  )}
-                </div>
+                      {getDialogueLogChips(currentRoleId, latestDialogueEvent).secondaryKeywords.map((keyword) => (
+                        <SoftChip key={keyword}>{keyword}</SoftChip>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm leading-6 text-[#7e857b]">还没有有效对话记录，先尝试点击上方人物。</p>
+                )}
               </div>
 
               {unlockedEnding ? (
@@ -372,7 +496,7 @@ export default function NpcPage() {
                     href={item.href}
                     className={`rounded-[20px] px-3 py-3 text-center text-sm font-semibold transition ${
                       isActive
-                        ? "bg-[#dce9df] text-[#456a5d] shadow-[4px_4px_10px_#d0cbc1,-4px_-4px_10px_#ffffff]"
+                        ? "bg-[#94b5a9] text-[#f6f4ee] shadow-[4px_4px_10px_#d0cbc1,-4px_-4px_10px_#ffffff]"
                         : "text-[#7b8379] hover:bg-white/40"
                     }`}
                   >

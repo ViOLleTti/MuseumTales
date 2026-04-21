@@ -265,7 +265,7 @@ function buildLeaderboardResponse(args: {
     ? runRows
         .filter((run) => run.player_id === playerId)
         .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
-        .slice(0, 5)
+        .slice(0, 3)
         .map((row, index) => mapRunToLeaderboardItem(row, index + 1, nicknameByPlayerId))
     : [];
 

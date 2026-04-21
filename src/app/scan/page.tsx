@@ -149,7 +149,7 @@ export default function ScanPage() {
                     href={item.href}
                     className={`rounded-[20px] px-3 py-3 text-center text-sm font-semibold transition ${
                       isActive
-                        ? "bg-[#dce9df] text-[#456a5d] shadow-[4px_4px_10px_#d0cbc1,-4px_-4px_10px_#ffffff]"
+                        ? "bg-[#94b5a9] text-[#f6f4ee] shadow-[4px_4px_10px_#d0cbc1,-4px_-4px_10px_#ffffff]"
                         : "text-[#7b8379] hover:bg-white/40"
                     }`}
                   >

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { NPCS } from "@/lib/game-data";
 import { useGameStore } from "@/lib/game-store";
-import { getRoleBriefing, getHomeProgressState } from "@/lib/home-briefing";
+import { getHomeHint, getRoleBriefing, getHomeProgressState } from "@/lib/home-briefing";
 import { getClueKeyword, getExhibitRule } from "@/lib/narrative-rules";
 import type { GameEvent } from "@/lib/narrative-types";
 
@@ -32,12 +32,12 @@ function SoftChip({
 
 function getNpcLabel(npcId: string) {
   const npc = NPCS.find((entry) => entry.id === npcId);
-  return npc ? `${npc.name}（${npc.id}）` : npcId;
+  return npc ? npc.name : npcId;
 }
 
 function getEventTitle(event: GameEvent) {
   if (event.type === "scan") {
-    return `${getExhibitRule(event.exhibitId).name}（${event.exhibitId}）`;
+    return getExhibitRule(event.exhibitId).name;
   }
 
   return getNpcLabel(event.npcId);
@@ -45,17 +45,25 @@ function getEventTitle(event: GameEvent) {
 
 function getEventDescription(event: GameEvent) {
   if (event.type === "scan") {
-    return `扫描展品后记录到 ${getClueKeyword(event.clueId)}（${event.clueId}）`;
+    return `AR Scan for ${getClueKeyword(event.clueId)}`;
   }
 
-  return `有效对话得到 ${getClueKeyword(event.clueId)}（${event.clueId}）`;
+  return `Message ${getClueKeyword(event.clueId)}`;
 }
 
 export default function MapHomePage() {
   const router = useRouter();
+  const logScrollRef = useRef<HTMLDivElement | null>(null);
+  const logItemsRef = useRef<HTMLDivElement | null>(null);
   const roleId = useGameStore((state) => state.selectedRole);
   const collectedClueIds = useGameStore((state) => state.collectedClueIds);
+  const scannedExhibits = useGameStore((state) => state.scannedExhibits);
+  const consumedTriggerIds = useGameStore((state) => state.consumedTriggerIds);
+  const lastScannedExhibitId = useGameStore((state) => state.lastScannedExhibitId);
+  const viewedEndingStoryIds = useGameStore((state) => state.viewedEndingStoryIds);
   const eventHistory = useGameStore((state) => state.eventHistory);
+  const resetRun = useGameStore((state) => state.resetRun);
+  const [logViewportHeight, setLogViewportHeight] = useState<number | null>(null);
 
   useEffect(() => {
     if (!roleId) {
@@ -63,21 +71,86 @@ export default function MapHomePage() {
     }
   }, [roleId, router]);
 
+  useEffect(() => {
+    if (eventHistory.length <= 3) {
+      setLogViewportHeight(null);
+      return;
+    }
+
+    const measureLogViewport = () => {
+      const itemsHost = logItemsRef.current;
+      if (!itemsHost) {
+        return;
+      }
+
+      const [firstItem, secondItem, thirdItem] = Array.from(itemsHost.children) as HTMLElement[];
+      if (!firstItem || !secondItem || !thirdItem) {
+        return;
+      }
+
+      const gap = Number.parseFloat(window.getComputedStyle(itemsHost).rowGap || "0");
+      const nextHeight =
+        firstItem.getBoundingClientRect().height +
+        secondItem.getBoundingClientRect().height +
+        thirdItem.getBoundingClientRect().height +
+        gap * 2;
+      setLogViewportHeight(nextHeight);
+    };
+
+    measureLogViewport();
+    window.addEventListener("resize", measureLogViewport);
+
+    return () => window.removeEventListener("resize", measureLogViewport);
+  }, [eventHistory]);
+
+  useEffect(() => {
+    if (eventHistory.length <= 3 || !logScrollRef.current) {
+      return;
+    }
+
+    const container = logScrollRef.current;
+    container.scrollTop = container.scrollHeight;
+  }, [eventHistory]);
+
   if (!roleId) {
     return null;
   }
 
   const briefing = getRoleBriefing(roleId);
-  const progress = getHomeProgressState(roleId, collectedClueIds);
+  const progress = getHomeProgressState(roleId, collectedClueIds, viewedEndingStoryIds);
+  const homeHint = getHomeHint(
+    roleId,
+    collectedClueIds,
+    scannedExhibits,
+    consumedTriggerIds,
+    lastScannedExhibitId,
+    viewedEndingStoryIds,
+  );
+  const handleBackToRole = () => {
+    resetRun();
+    router.push("/role");
+  };
 
   return (
     <div className="phone-stage bg-[#e8e5dd]">
       <div className="phone-shell border-none bg-[#f1efe7] shadow-[12px_12px_28px_#d5d2c8,-10px_-10px_26px_#ffffff]">
         <main className="relative flex min-h-full flex-col overflow-x-visible overflow-y-auto bg-[#f1efe7] text-[#424542]">
           <div className="sticky top-0 z-10 bg-[#f1efe7]/92 px-4 pb-4 pt-6 backdrop-blur">
-            <div className="mx-auto max-w-[290px] rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
-              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">Mission Hub</p>
-              <h1 className="mt-1 text-[15px] font-bold tracking-[0.12em] text-[#424542]">任务中枢</h1>
+            <div className="relative flex items-center justify-center">
+              <button
+                type="button"
+                onClick={handleBackToRole}
+                aria-label="返回身份选择"
+                className="absolute left-0 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f1efe7] text-[#6f7e76] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff] transition hover:bg-[#f6f4ee]"
+              >
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                  <path d="M12.5 4.5 7 10l5.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <div className="w-full max-w-[290px] rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">Mission Hub</p>
+                <h1 className="mt-1 text-[15px] font-bold tracking-[0.12em] text-[#424542]">任务中枢</h1>
+              </div>
             </div>
 
             <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -91,7 +164,7 @@ export default function MapHomePage() {
               <div className="flex items-center justify-center">
                 <div className="min-w-[270px] rounded-full bg-[#f1efe7] px-6 py-3 shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
                   <p className="text-center text-sm font-semibold text-[#6f7e76]">
-                    {progress.activeStory ? `当前目标：${progress.activeStory.title}` : "当前目标已全部完成"}
+                    {homeHint}
                   </p>
                 </div>
               </div>
@@ -117,8 +190,8 @@ export default function MapHomePage() {
                 </div>
                 <div className="mt-3 flex flex-wrap justify-center gap-2">
                   {progress.currentTierStories.map((story) => (
-                    <SoftChip key={story.storyId} tone="muted">
-                      {story.grade} · {story.title}
+                    <SoftChip key={story.storyId} tone={story.isComplete ? "cream-accent" : "muted"}>
+                      {story.label}
                     </SoftChip>
                   ))}
                 </div>
@@ -132,35 +205,32 @@ export default function MapHomePage() {
                     <p className="text-sm font-semibold text-[#414640]">当前身份</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <SoftChip tone="cream-accent">{briefing.title}</SoftChip>
-                      <SoftChip tone="muted">任务简报</SoftChip>
                     </div>
-                  </div>
-
-                  <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                    <p className="text-sm font-semibold text-[#414640]">剧情导语</p>
-                    <p className="mt-2 text-sm leading-6 text-[#6d756c]">{briefing.intro}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {briefing.keywords.map((keyword) => (
+                        <SoftChip key={keyword} tone="muted">
+                          {keyword}
+                        </SoftChip>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-[#6d756c]">{briefing.intro}</p>
                   </div>
 
                   <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
                     <p className="text-sm font-semibold text-[#414640]">为什么来到这里</p>
-                    <p className="mt-2 text-sm leading-6 text-[#6d756c]">{briefing.whyHere}</p>
-                  </div>
-
-                  <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                    <p className="text-sm font-semibold text-[#414640]">本轮任务</p>
-                    <p className="mt-2 text-sm leading-6 text-[#6d756c]">{briefing.mission}</p>
-                  </div>
-
-                  <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                    <p className="text-sm font-semibold text-[#414640]">推荐下一步</p>
-                    <p className="mt-2 text-sm leading-6 text-[#6d756c]">{briefing.nextStep}</p>
+                    <p className="mt-3 text-sm leading-6 text-[#6d756c]">{briefing.whyHere}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
                     <p className="text-sm font-semibold text-[#414640]">探索记录</p>
-                    <div className="mt-3 space-y-3">
+                    <div
+                      ref={logScrollRef}
+                      className={`mt-3 ${eventHistory.length > 3 ? "overflow-y-auto pr-1 home-log-scroll" : ""}`}
+                      style={eventHistory.length > 3 && logViewportHeight ? { maxHeight: `${logViewportHeight}px` } : undefined}
+                    >
+                      <div ref={logItemsRef} className="flex flex-col gap-3">
                       {eventHistory.length ? (
                         eventHistory.map((event) => (
                           <div
@@ -179,6 +249,7 @@ export default function MapHomePage() {
                           还没有有效记录。先去扫描展品，或通过有效 NPC 对话拿到关键线索。
                         </p>
                       )}
+                      </div>
                     </div>
                   </div>
 
@@ -216,7 +287,7 @@ export default function MapHomePage() {
                     href={item.href}
                     className={`rounded-[20px] px-3 py-3 text-center text-sm font-semibold transition ${
                       isActive
-                        ? "bg-[#dce9df] text-[#456a5d] shadow-[4px_4px_10px_#d0cbc1,-4px_-4px_10px_#ffffff]"
+                        ? "bg-[#94b5a9] text-[#f6f4ee] shadow-[4px_4px_10px_#d0cbc1,-4px_-4px_10px_#ffffff]"
                         : "text-[#7b8379] hover:bg-white/40"
                     }`}
                   >
