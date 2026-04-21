@@ -181,3 +181,59 @@ a {
     padding-top: 12px;
   }
 }
+
+.role-scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.role-scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes role-card-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(34px) scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(18px) scale(0.85);
+  }
+}
+
+@keyframes role-card-spring-up {
+  0% {
+    opacity: 1;
+    transform: translateY(18px) scale(0.85);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(-4px) scale(calc(var(--role-card-final-scale, 1) + 0.018));
+  }
+  74% {
+    transform: translateY(1px) scale(calc(var(--role-card-final-scale, 1) - 0.006));
+  }
+  88% {
+    transform: translateY(0) scale(calc(var(--role-card-final-scale, 1) + 0.002));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(var(--role-card-final-scale, 1));
+  }
+}
+
+.role-card-preenter {
+  opacity: 0;
+  transform: translateY(34px) scale(0.85);
+}
+
+.role-card-reveal {
+  animation: role-card-reveal 0.28s ease-out both;
+  will-change: transform, opacity;
+}
+
+.role-card-spring-up {
+  animation: role-card-spring-up 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  will-change: transform, opacity;
+}

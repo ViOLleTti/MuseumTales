@@ -1,68 +1,309 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { PageShell, Panel, PrimaryButton, StatusBadge } from "@/components/game-ui";
-import { ROLES } from "@/lib/game-data";
+import { useEffect, useMemo, useState } from "react";
 import { useGameStore } from "@/lib/game-store";
 import type { RoleId } from "@/lib/types";
+
+const COLORS = {
+  bg: "#f1efe7",
+  sage: "#94b5a9",
+  sageDeep: "#7a9e91",
+  textMain: "#465a51",
+  textMuted: "#7f938a",
+  white: "#ffffff",
+};
+
+const shadowRaised = "shadow-[8px_8px_16px_rgba(206,202,189,0.5),-8px_-8px_16px_rgba(255,255,255,0.9)]";
+const shadowRaisedSm = "shadow-[4px_4px_10px_rgba(206,202,189,0.4),-4px_-4px_10px_rgba(255,255,255,0.9)]";
+const shadowInsetCircle =
+  "shadow-[inset_6px_6px_12px_rgba(206,202,189,0.6),inset_-6px_-6px_12px_rgba(255,255,255,0.9)]";
+const shadowRaisedCircle =
+  "shadow-[6px_6px_12px_rgba(206,202,189,0.5),-6px_-6px_12px_rgba(255,255,255,0.9)]";
+
+type RoleCard = {
+  id: RoleId;
+  title: string;
+  description: string;
+};
+
+const ROLE_CARDS: RoleCard[] = [
+  {
+    id: "P1",
+    title: "校史档案员",
+    description: "发掘校史底蕴，整理档案资料，成为校园历史的守护者与传承人。",
+  },
+  {
+    id: "P2",
+    title: "汉教助理",
+    description: "辅助国际学生汉语教学，搭建中外文化交流的友好桥梁。",
+  },
+  {
+    id: "P3",
+    title: "校报记者",
+    description: "奔走校园一线，洞察师生百态，用文字与镜头记录真实瞬间。",
+  },
+  {
+    id: "P4",
+    title: "博物馆志愿者",
+    description: "探秘高校博物馆，普及文物知识，讲述藏品背后鲜为人知的故事。",
+  },
+];
+
+function ArchiveIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={COLORS.sage}
+      strokeWidth="1.8"
+      className={className}
+    >
+      <rect x="4" y="5" width="16" height="4" rx="1.6" />
+      <path d="M6 9h12v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9Z" />
+      <path d="M10 13h4" />
+    </svg>
+  );
+}
+
+function BookOpenIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={COLORS.sage}
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="M12 7a3 3 0 0 0-3-2H5v14h4a3 3 0 0 1 3 2" />
+      <path d="M12 7a3 3 0 0 1 3-2h4v14h-4a3 3 0 0 0-3 2" />
+    </svg>
+  );
+}
+
+function NewspaperIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={COLORS.sage}
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="M5 6.5A1.5 1.5 0 0 1 6.5 5H18v12.5a1.5 1.5 0 0 1-3 0V8H5v9.5A1.5 1.5 0 0 0 6.5 19H17" />
+      <path d="M8 11h4" />
+      <path d="M8 14h6" />
+      <path d="M8 17h6" />
+    </svg>
+  );
+}
+
+function LandmarkIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={COLORS.sage}
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path d="M3 10h18" />
+      <path d="M12 4 4 8v2h16V8l-8-4Z" />
+      <path d="M6 10v7" />
+      <path d="M10 10v7" />
+      <path d="M14 10v7" />
+      <path d="M18 10v7" />
+      <path d="M3 20h18" />
+    </svg>
+  );
+}
+
+const ROLE_ICONS: Record<RoleId, ({ className }: { className?: string }) => JSX.Element> = {
+  P1: ArchiveIcon,
+  P2: BookOpenIcon,
+  P3: NewspaperIcon,
+  P4: LandmarkIcon,
+};
 
 export default function RolePage() {
   const router = useRouter();
   const selectRole = useGameStore((state) => state.selectRole);
   const [activeRole, setActiveRole] = useState<RoleId>("P1");
+  const [isReady, setIsReady] = useState(false);
+  const [shouldSpringCards, setShouldSpringCards] = useState(false);
+
+  useEffect(() => {
+    const revealTimer = window.setTimeout(() => setIsReady(true), 120);
+    const springTimer = window.setTimeout(() => setShouldSpringCards(true), 1550);
+
+    return () => {
+      window.clearTimeout(revealTimer);
+      window.clearTimeout(springTimer);
+    };
+  }, []);
+
+  const activeCard = useMemo(
+    () => ROLE_CARDS.find((card) => card.id === activeRole) ?? ROLE_CARDS[0],
+    [activeRole],
+  );
 
   return (
-    <PageShell
-      title="选择身份"
-      subtitle="选定身份后会先进入地图页；后续结局会根据你扫描的展品和 NPC 有效对话自动判定。"
-      backHref="/"
-    >
-      <div className="mobile-section grid gap-4">
-        {ROLES.map((role) => {
-          const selected = role.id === activeRole;
-
-          return (
-            <button
-              key={role.id}
-              type="button"
-              onClick={() => setActiveRole(role.id)}
-              className={`rounded-3xl border p-5 text-left transition ${
-                selected
-                  ? "border-[#cdee71] bg-[#cdee71] text-[#101110]"
-                  : "border-[rgba(255,255,255,0.08)] bg-[#1a1d1a] text-white hover:border-[#cdee71]"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.2em] opacity-80">{role.id}</p>
-                  <h2 className="mt-2 text-2xl font-semibold">{role.title}</h2>
-                  <p className="text-sm opacity-80">{role.titleEn}</p>
-                </div>
-                {selected ? <StatusBadge tone="amber">已选中</StatusBadge> : null}
-              </div>
-              <p className="mt-4 text-sm leading-6 opacity-90">{role.blurb}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      <Panel className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-white">确认后将先进入地图页</h3>
-          <p className="text-sm text-slate-400">
-            本次游玩数据仅保存在当前页面状态中，刷新页面会重置进度。
-          </p>
+    <div className="flex min-h-screen w-full items-center justify-center bg-white p-4 sm:p-8">
+      <div
+        className="relative flex h-[844px] w-full max-w-[390px] flex-col overflow-hidden rounded-[55px] border-[12px] border-[#f8f7f4] ring-1 ring-[#e5e3db] shadow-[0_25px_50px_-12px_rgba(148,181,169,0.25)]"
+        style={{ backgroundColor: COLORS.bg }}
+      >
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className={`absolute -right-[20%] -top-[10%] h-[380px] w-[380px] rounded-full ${shadowInsetCircle}`} style={{ backgroundColor: COLORS.bg }} />
+          <div className={`absolute -right-[5%] top-[5%] h-[200px] w-[200px] rounded-full ${shadowRaisedCircle}`} style={{ backgroundColor: COLORS.bg }} />
+          <div className={`absolute -left-[30%] top-[30%] h-[320px] w-[320px] rounded-full ${shadowRaisedCircle}`} style={{ backgroundColor: COLORS.bg }} />
+          <div className={`absolute -left-[15%] top-[42%] h-[180px] w-[180px] rounded-full ${shadowInsetCircle}`} style={{ backgroundColor: COLORS.bg }} />
+          <div className={`absolute -bottom-[5%] -right-[15%] h-[350px] w-[350px] rounded-full ${shadowInsetCircle}`} style={{ backgroundColor: COLORS.bg }} />
         </div>
-        <PrimaryButton
-          onClick={() => {
-            selectRole(activeRole);
-            router.push("/home");
+
+        <div className="relative z-10 flex-1 overflow-y-auto pb-32 role-scrollbar-hide">
+          <div className="px-7 pb-6 pt-16">
+            <div
+              className={`flex flex-col items-center gap-4 transition-all duration-700 ease-out ${
+                isReady ? "translate-y-0 opacity-100" : "-translate-y-5 opacity-0"
+              }`}
+              style={{ transitionDelay: "150ms" }}
+            >
+              <div className={`rounded-full px-6 py-2 ${shadowRaisedSm}`} style={{ backgroundColor: COLORS.bg }}>
+                <span className="tracking-[0.15em]" style={{ color: COLORS.sage, fontSize: 13, fontWeight: 600 }}>
+                  Select Role
+                </span>
+              </div>
+
+              <h1
+                className="mt-2 text-center"
+                style={{ color: COLORS.textMain, fontSize: 19, fontWeight: 600, letterSpacing: "0.05em" }}
+              >
+                请选择您的专属身份
+              </h1>
+
+              <div className="mt-1 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.sage, opacity: 0.3 }} />
+                <span className="h-[2px] w-8 rounded-full" style={{ backgroundColor: COLORS.sage, opacity: 0.3 }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.sage }} />
+                <span className="h-[2px] w-8 rounded-full" style={{ backgroundColor: COLORS.sage, opacity: 0.3 }} />
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS.sage, opacity: 0.3 }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2 space-y-5 px-6">
+            {ROLE_CARDS.map((role, index) => {
+              const isSelected = activeRole === role.id;
+              const Icon = ROLE_ICONS[role.id];
+
+              return (
+                <button
+                  key={role.id}
+                  type="button"
+                  onClick={() => setActiveRole(role.id)}
+                  className={`w-full rounded-[22px] border-[1.5px] p-5 text-left transition-[border-color,box-shadow] duration-300 ${
+                    shouldSpringCards
+                      ? "role-card-spring-up"
+                      : isReady
+                        ? "role-card-reveal"
+                        : "role-card-preenter"
+                  } ${isSelected ? "border-[#94b5a9]" : "border-transparent"} ${shadowRaised}`}
+                  style={{
+                    backgroundColor: COLORS.bg,
+                    animationDelay: shouldSpringCards
+                      ? `${index * 0.15}s`
+                      : isReady
+                        ? `${0.4 + index * 0.15}s`
+                        : undefined,
+                    ["--role-card-final-scale" as string]: isSelected ? "1.02" : "1",
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`flex h-[50px] w-[50px] flex-shrink-0 items-center justify-center rounded-[22px] ${shadowRaisedSm}`}
+                      style={{ backgroundColor: COLORS.bg }}
+                    >
+                      <Icon className="h-[22px] w-[22px]" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <h3
+                          style={{
+                            color: COLORS.textMain,
+                            fontSize: 16,
+                            fontWeight: 600,
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {role.title}
+                        </h3>
+                      </div>
+                      <p
+                        style={{
+                          color: COLORS.textMuted,
+                          fontSize: 12,
+                          lineHeight: 1.5,
+                          fontWeight: 400,
+                        }}
+                      >
+                        {role.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div
+          className={`absolute bottom-0 left-0 z-20 w-full px-7 py-8 transition-all duration-700 ease-out ${
+            isReady ? "translate-y-0 opacity-100" : "translate-y-[50px] opacity-0"
+          }`}
+          style={{
+            background: `linear-gradient(to top, ${COLORS.bg} 80%, transparent)`,
+            transitionDelay: "980ms",
           }}
         >
-          以该身份进入
-        </PrimaryButton>
-      </Panel>
-    </PageShell>
+          <button
+            type="button"
+            onClick={() => {
+              selectRole(activeCard.id);
+              router.push("/home");
+            }}
+            className={`flex w-full items-center justify-center gap-2 rounded-[22px] py-4 transition-all duration-300 ${
+              activeCard ? shadowRaised : shadowRaisedSm
+            }`}
+            style={{
+              backgroundColor: activeCard ? COLORS.sage : COLORS.bg,
+            }}
+          >
+            <span
+              style={{
+                color: activeCard ? COLORS.white : COLORS.textMuted,
+                fontSize: 16,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+              }}
+            >
+              确认出发
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={COLORS.white}
+              strokeWidth="2.5"
+              className="h-[18px] w-[18px]"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </button>
+
+        </div>
+      </div>
+    </div>
   );
 }
