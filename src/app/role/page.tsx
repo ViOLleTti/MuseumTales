@@ -150,7 +150,8 @@ export default function RolePage() {
   return (
     <div className="phone-stage bg-[#e8e5dd]">
       <div className="phone-shell border-none bg-[#f1efe7] shadow-[12px_12px_28px_#d5d2c8,-10px_-10px_26px_#ffffff]">
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 z-0 bg-[#f1efe7]" />
+        <div className="absolute inset-0 z-[1] overflow-hidden pointer-events-none">
           <div className={`absolute -right-[20%] -top-[10%] h-[380px] w-[380px] rounded-full ${shadowInsetCircle}`} style={{ backgroundColor: COLORS.bg }} />
           <div className={`absolute -right-[5%] top-[5%] h-[200px] w-[200px] rounded-full ${shadowRaisedCircle}`} style={{ backgroundColor: COLORS.bg }} />
           <div className={`absolute -left-[30%] top-[30%] h-[320px] w-[320px] rounded-full ${shadowRaisedCircle}`} style={{ backgroundColor: COLORS.bg }} />
