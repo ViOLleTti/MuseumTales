@@ -148,11 +148,8 @@ export default function RolePage() {
   );
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-white p-4 sm:p-8">
-      <div
-        className="relative flex h-[844px] w-full max-w-[390px] flex-col overflow-hidden rounded-[55px] border-[12px] border-[#f8f7f4] ring-1 ring-[#e5e3db] shadow-[0_25px_50px_-12px_rgba(148,181,169,0.25)]"
-        style={{ backgroundColor: COLORS.bg }}
-      >
+    <div className="phone-stage bg-[#e8e5dd]">
+      <div className="phone-shell border-none bg-[#f1efe7] shadow-[12px_12px_28px_#d5d2c8,-10px_-10px_26px_#ffffff]">
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className={`absolute -right-[20%] -top-[10%] h-[380px] w-[380px] rounded-full ${shadowInsetCircle}`} style={{ backgroundColor: COLORS.bg }} />
           <div className={`absolute -right-[5%] top-[5%] h-[200px] w-[200px] rounded-full ${shadowRaisedCircle}`} style={{ backgroundColor: COLORS.bg }} />
@@ -161,7 +158,7 @@ export default function RolePage() {
           <div className={`absolute -bottom-[5%] -right-[15%] h-[350px] w-[350px] rounded-full ${shadowInsetCircle}`} style={{ backgroundColor: COLORS.bg }} />
         </div>
 
-        <div className="relative z-10 flex-1 overflow-y-auto pb-32 role-scrollbar-hide">
+        <main className="relative z-10 flex min-h-full flex-col overflow-y-auto bg-[#f1efe7] pb-32 role-scrollbar-hide">
           <div className="px-7 pb-6 pt-16">
             <div
               className={`flex flex-col items-center gap-4 transition-all duration-700 ease-out ${
@@ -256,7 +253,7 @@ export default function RolePage() {
               );
             })}
           </div>
-        </div>
+        </main>
 
         <div
           className={`absolute bottom-0 left-0 z-20 w-full px-7 py-8 transition-all duration-700 ease-out ${

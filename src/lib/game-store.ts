@@ -6,7 +6,7 @@ import {
   getRoleRuleSet,
   isStoryUnlocked as isStoryUnlockedByRule,
 } from "./narrative-rules";
-import type { ClueId, DialogueCheckResult } from "./narrative-types";
+import type { ClueId, DialogueCheckResult, GameEvent } from "./narrative-types";
 import type { ExhibitId, RoleId, StoryResult } from "./types";
 
 interface GameState {
@@ -14,6 +14,7 @@ interface GameState {
   collectedClueIds: ClueId[];
   scannedExhibits: ExhibitId[];
   consumedTriggerIds: string[];
+  eventHistory: GameEvent[];
   viewedEndingStoryIds: string[];
   lastScannedExhibitId: ExhibitId | null;
   submittedResults: Record<string, StoryResult>;
@@ -31,6 +32,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   collectedClueIds: [],
   scannedExhibits: [],
   consumedTriggerIds: [],
+  eventHistory: [],
   viewedEndingStoryIds: [],
   lastScannedExhibitId: null,
   submittedResults: {},
@@ -40,6 +42,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       collectedClueIds: [],
       scannedExhibits: [],
       consumedTriggerIds: [],
+      eventHistory: [],
       viewedEndingStoryIds: [],
       lastScannedExhibitId: null,
       submittedResults: {},
@@ -50,6 +53,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       collectedClueIds: [],
       scannedExhibits: [],
       consumedTriggerIds: [],
+      eventHistory: [],
       viewedEndingStoryIds: [],
       lastScannedExhibitId: null,
       submittedResults: {},
@@ -62,6 +66,19 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? state.scannedExhibits
         : [...state.scannedExhibits, exhibitId],
       collectedClueIds: dedupe([...state.collectedClueIds, exhibit.scanClueId]),
+      eventHistory: state.scannedExhibits.includes(exhibitId) || !state.selectedRole
+        ? state.eventHistory
+        : [
+            ...state.eventHistory,
+            {
+              id: crypto.randomUUID(),
+              type: "scan",
+              createdAt: new Date().toISOString(),
+              roleId: state.selectedRole,
+              exhibitId,
+              clueId: exhibit.scanClueId,
+            },
+          ],
       lastScannedExhibitId: exhibitId,
     }));
   },
@@ -83,6 +100,22 @@ export const useGameStore = create<GameState>((set, get) => ({
         ? state.consumedTriggerIds
         : [...state.consumedTriggerIds, matchedTriggerId],
       collectedClueIds: dedupe([...state.collectedClueIds, rewardClueId]),
+      eventHistory:
+        state.consumedTriggerIds.includes(matchedTriggerId) || !result.exhibitId
+          ? state.eventHistory
+          : [
+              ...state.eventHistory,
+              {
+                id: crypto.randomUUID(),
+                type: "dialogue",
+                createdAt: new Date().toISOString(),
+                roleId: result.roleId,
+                exhibitId: result.exhibitId,
+                npcId: result.npcId,
+                clueId: rewardClueId,
+                triggerId: matchedTriggerId,
+              },
+            ],
     }));
   },
   rollbackLatestDialogueProgress: () => {
@@ -159,4 +192,8 @@ export function markEndingViewed(storyId: string) {
 
 export function getStoryResult(storyId: string) {
   return useGameStore.getState().submittedResults[storyId];
+}
+
+export function getEventHistory() {
+  return useGameStore.getState().eventHistory;
 }

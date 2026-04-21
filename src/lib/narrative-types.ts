@@ -22,6 +22,28 @@ export type DialogueClueId =
 export type ClueId = ScanClueId | DialogueClueId;
 export type Grade = "S" | "A" | "B" | "C";
 
+export interface ScanGameEvent {
+  id: string;
+  type: "scan";
+  createdAt: string;
+  roleId: RoleId;
+  exhibitId: ExhibitId;
+  clueId: ScanClueId;
+}
+
+export interface DialogueGameEvent {
+  id: string;
+  type: "dialogue";
+  createdAt: string;
+  roleId: RoleId;
+  exhibitId: ExhibitId;
+  npcId: NpcId;
+  clueId: DialogueClueId;
+  triggerId: string;
+}
+
+export type GameEvent = ScanGameEvent | DialogueGameEvent;
+
 export interface NarrativeNpcDef {
   id: NpcId;
   name: string;
