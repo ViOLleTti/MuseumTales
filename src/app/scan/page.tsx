@@ -6,23 +6,30 @@ import { useCallback, useEffect, useState } from "react";
 import { MindArScanner } from "@/components/scan/mindar-scanner";
 import { ROLES } from "@/lib/game-data";
 import { scanExhibit, useGameStore } from "@/lib/game-store";
+import { PAGE_HEADER_COPY, ROLE_SHORT_LABELS, SCAN_PAGE_COPY, pickText } from "@/lib/i18n";
 import { getExhibitRule, scanExhibitResult } from "@/lib/narrative-rules";
+import { getRecentClueTopChip } from "@/lib/top-status-chip";
+import { useUiStore } from "@/lib/ui-store";
 import type { ExhibitId } from "@/lib/types";
 
 function SoftChip({
   children,
   tone = "default",
+  className = "",
 }: {
   children: React.ReactNode;
   tone?: "default" | "cream-accent";
+  className?: string;
 }) {
-  const className =
+  const toneClassName =
     tone === "cream-accent"
       ? "bg-[#f1efe7] text-[#527a67] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
       : "bg-[#f1efe7] text-[#4e5751] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]";
 
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${className}`}>
+    <span
+      className={`inline-flex max-w-full items-center justify-center rounded-full px-3 py-1.5 text-center text-xs font-semibold leading-tight whitespace-normal ${toneClassName} ${className}`}
+    >
       {children}
     </span>
   );
@@ -33,6 +40,8 @@ export default function ScanPage() {
   const roleId = useGameStore((state) => state.selectedRole);
   const collectedClueIds = useGameStore((state) => state.collectedClueIds);
   const lastScannedExhibitId = useGameStore((state) => state.lastScannedExhibitId);
+  const eventHistory = useGameStore((state) => state.eventHistory);
+  const language = useUiStore((state) => state.language);
   const [selectedExhibitId, setSelectedExhibitId] = useState<ExhibitId | null>(lastScannedExhibitId);
 
   useEffect(() => {
@@ -56,31 +65,42 @@ export default function ScanPage() {
     return null;
   }
 
-  const currentExhibit = selectedExhibitId ? getExhibitRule(selectedExhibitId) : null;
+  const isEnglish = language === "en";
+  const currentExhibit = selectedExhibitId ? getExhibitRule(selectedExhibitId, language) : null;
   const currentScanResult = selectedExhibitId
-    ? scanExhibitResult(selectedExhibitId, collectedClueIds)
+    ? scanExhibitResult(selectedExhibitId, collectedClueIds, language)
     : null;
   const currentRoleLabel =
-    {
-      P1: "档案员",
-      P2: "汉教助理",
-      P3: "校报记者",
-      P4: "志愿者",
-    }[roleId] ?? ROLES.find((role) => role.id === roleId)?.title ?? roleId;
+    pickText(ROLE_SHORT_LABELS[roleId], language) ??
+    ROLES.find((role) => role.id === roleId)?.[isEnglish ? "titleEn" : "title"] ??
+    roleId;
+  const recentClueTopChip = getRecentClueTopChip(eventHistory, roleId, language);
 
   return (
     <div className="phone-stage bg-[#e8e5dd]">
       <div className="phone-shell border-none bg-[#f1efe7] shadow-[12px_12px_28px_#d5d2c8,-10px_-10px_26px_#ffffff]">
         <main className="relative flex min-h-full flex-col overflow-x-visible overflow-y-auto bg-[#f1efe7] text-[#424542]">
           <div className="sticky top-0 z-10 bg-[#f1efe7]/92 px-4 pb-4 pt-6 backdrop-blur">
-            <div className="mx-auto max-w-[290px] rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
-              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">Investigation</p>
-              <h1 className="mt-1 text-[15px] font-bold tracking-[0.12em] text-[#424542]">展品扫描</h1>
+            <div
+              className={`mx-auto rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff] ${
+                isEnglish ? "max-w-[320px]" : "max-w-[290px]"
+              }`}
+            >
+              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">{PAGE_HEADER_COPY.scan.eyebrow}</p>
+              <h1 className={`mt-1 font-bold text-[#424542] ${isEnglish ? "text-[14px] tracking-[0.08em]" : "text-[15px] tracking-[0.12em]"}`}>
+                {pickText(PAGE_HEADER_COPY.scan.title, language)}
+              </h1>
             </div>
 
             <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <SoftChip tone="cream-accent">{currentRoleLabel}</SoftChip>
-              <SoftChip tone="cream-accent">{currentExhibit ? currentExhibit.name : "未扫描展品"}</SoftChip>
+              <SoftChip tone="cream-accent" className={isEnglish ? "min-w-[10ch]" : ""}>
+                {currentRoleLabel}
+              </SoftChip>
+              {recentClueTopChip ? (
+                <SoftChip tone="cream-accent" className={isEnglish ? "min-w-[10ch]" : ""}>
+                  {recentClueTopChip}
+                </SoftChip>
+              ) : null}
             </div>
           </div>
 
@@ -108,7 +128,7 @@ export default function ScanPage() {
             <section className="mt-4 rounded-[32px] bg-[#f1efe7] p-5 shadow-[8px_8px_18px_#d5d2c8,-8px_-8px_18px_#ffffff]">
               <div className="flex items-center justify-center">
                 <div className="min-w-[270px] rounded-full bg-[#f1efe7] px-8 py-3 shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
-                  <p className="text-center text-sm font-semibold text-[#6f7e76]">对准展品完成识别</p>
+                  <p className="text-center text-sm font-semibold text-[#6f7e76]">{pickText(SCAN_PAGE_COPY.prompt, language)}</p>
                 </div>
               </div>
 
@@ -125,9 +145,9 @@ export default function ScanPage() {
                 </div>
               ) : (
                 <div className="mt-4 rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                  <p className="text-sm font-semibold text-[#414640]">等待识别展品</p>
+                  <p className="text-sm font-semibold text-[#414640]">{pickText(SCAN_PAGE_COPY.waitingTitle, language)}</p>
                   <p className="mt-2 text-sm leading-6 text-[#7e857b]">
-                    将 target image 对准上方取景区域。识别成功后，这里会显示对应展品名称、观察文案和线索关键词。
+                    {pickText(SCAN_PAGE_COPY.waitingBody, language)}
                   </p>
                 </div>
               )}

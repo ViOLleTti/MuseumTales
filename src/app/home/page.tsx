@@ -6,17 +6,22 @@ import { useRouter } from "next/navigation";
 import { NPCS } from "@/lib/game-data";
 import { useGameStore } from "@/lib/game-store";
 import { getHomeHint, getRoleBriefing, getHomeProgressState } from "@/lib/home-briefing";
-import { getClueKeyword, getExhibitRule } from "@/lib/narrative-rules";
+import { HOME_PAGE_COPY, PAGE_HEADER_COPY, ROLE_SHORT_LABELS, pickText } from "@/lib/i18n";
+import { getClueKeyword, getExhibitRule, getRelevantClueIdsForRole } from "@/lib/narrative-rules";
+import { getRecentClueTopChip } from "@/lib/top-status-chip";
+import { useUiStore } from "@/lib/ui-store";
 import type { GameEvent } from "@/lib/narrative-types";
 
 function SoftChip({
   children,
   tone = "default",
+  className = "",
 }: {
   children: React.ReactNode;
   tone?: "default" | "cream-accent" | "muted";
+  className?: string;
 }) {
-  const className =
+  const toneClassName =
     tone === "cream-accent"
       ? "bg-[#f1efe7] text-[#527a67] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
       : tone === "muted"
@@ -24,31 +29,37 @@ function SoftChip({
         : "bg-[#f1efe7] text-[#4e5751] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]";
 
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${className}`}>
+    <span
+      className={`inline-flex max-w-full items-center justify-center rounded-full px-3 py-1.5 text-center text-xs font-semibold leading-tight whitespace-normal ${toneClassName} ${className}`}
+    >
       {children}
     </span>
   );
 }
 
-function getNpcLabel(npcId: string) {
+function getNpcLabel(npcId: string, language: "zh" | "en") {
   const npc = NPCS.find((entry) => entry.id === npcId);
-  return npc ? npc.name : npcId;
+  return npc ? (language === "en" ? npc.nameEn : npc.name) : npcId;
 }
 
-function getEventTitle(event: GameEvent) {
+function getEventTitle(event: GameEvent, language: "zh" | "en") {
   if (event.type === "scan") {
-    return getExhibitRule(event.exhibitId).name;
+    return getExhibitRule(event.exhibitId, language).name;
   }
 
-  return getNpcLabel(event.npcId);
+  return getNpcLabel(event.npcId, language);
 }
 
-function getEventDescription(event: GameEvent) {
+function getEventDescription(event: GameEvent, language: "zh" | "en") {
   if (event.type === "scan") {
-    return `AR Scan for ${getClueKeyword(event.clueId)}`;
+    return language === "en"
+      ? `Scanned clue: ${getClueKeyword(event.clueId, language)}`
+      : `AR Scan for ${getClueKeyword(event.clueId, language)}`;
   }
 
-  return `Message ${getClueKeyword(event.clueId)}`;
+  return language === "en"
+    ? `NPC clue: ${getClueKeyword(event.clueId, language)}`
+    : `Message ${getClueKeyword(event.clueId, language)}`;
 }
 
 export default function MapHomePage() {
@@ -63,6 +74,8 @@ export default function MapHomePage() {
   const viewedEndingStoryIds = useGameStore((state) => state.viewedEndingStoryIds);
   const eventHistory = useGameStore((state) => state.eventHistory);
   const resetRun = useGameStore((state) => state.resetRun);
+  const language = useUiStore((state) => state.language);
+  const toggleLanguage = useUiStore((state) => state.toggleLanguage);
   const [logViewportHeight, setLogViewportHeight] = useState<number | null>(null);
 
   useEffect(() => {
@@ -116,8 +129,11 @@ export default function MapHomePage() {
     return null;
   }
 
-  const briefing = getRoleBriefing(roleId);
-  const progress = getHomeProgressState(roleId, collectedClueIds, viewedEndingStoryIds);
+  const isEnglish = language === "en";
+  const briefing = getRoleBriefing(roleId, language);
+  const progress = getHomeProgressState(roleId, collectedClueIds, viewedEndingStoryIds, language);
+  const relevantCollectedClueIds = collectedClueIds.filter((clueId) => getRelevantClueIdsForRole(roleId).includes(clueId));
+  const recentClueTopChip = getRecentClueTopChip(eventHistory, roleId, language);
   const homeHint = getHomeHint(
     roleId,
     collectedClueIds,
@@ -125,6 +141,7 @@ export default function MapHomePage() {
     consumedTriggerIds,
     lastScannedExhibitId,
     viewedEndingStoryIds,
+    language,
   );
   const handleBackToRole = () => {
     resetRun();
@@ -140,22 +157,46 @@ export default function MapHomePage() {
               <button
                 type="button"
                 onClick={handleBackToRole}
-                aria-label="返回身份选择"
+                aria-label={pickText(HOME_PAGE_COPY.backAria, language)}
                 className="absolute left-0 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f1efe7] text-[#6f7e76] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff] transition hover:bg-[#f6f4ee]"
               >
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
                   <path d="M12.5 4.5 7 10l5.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              <div className="w-full max-w-[290px] rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
-                <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">Mission Hub</p>
-                <h1 className="mt-1 text-[15px] font-bold tracking-[0.12em] text-[#424542]">任务中枢</h1>
+              <button
+                type="button"
+                onClick={toggleLanguage}
+                aria-label={pickText(HOME_PAGE_COPY.languageAria, language)}
+                className="absolute right-0 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f1efe7] text-[#6f7e76] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff] transition hover:bg-[#f6f4ee]"
+              >
+                <span className="text-lg leading-none">⇆</span>
+              </button>
+              <div
+                className={`w-full rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff] ${
+                  isEnglish ? "max-w-[320px]" : "max-w-[290px]"
+                }`}
+              >
+                <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">
+                  {PAGE_HEADER_COPY.home.eyebrow}
+                </p>
+                <h1
+                  className={`mt-1 font-bold text-[#424542] ${isEnglish ? "text-[14px] tracking-[0.08em]" : "text-[15px] tracking-[0.12em]"}`}
+                >
+                  {pickText(PAGE_HEADER_COPY.home.title, language)}
+                </h1>
               </div>
             </div>
 
             <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <SoftChip tone="cream-accent">{briefing.title}</SoftChip>
-              {progress.activeStory ? <SoftChip tone="cream-accent">{progress.activeStory.title}</SoftChip> : null}
+              <SoftChip tone="cream-accent" className={isEnglish ? "min-w-[10ch]" : ""}>
+                {pickText(ROLE_SHORT_LABELS[roleId], language)}
+              </SoftChip>
+              {recentClueTopChip ? (
+                <SoftChip tone="cream-accent" className={isEnglish ? "min-w-[10ch]" : ""}>
+                  {recentClueTopChip}
+                </SoftChip>
+              ) : null}
             </div>
           </div>
 
@@ -202,29 +243,33 @@ export default function MapHomePage() {
               <div className="grid grid-cols-[0.9fr_1.1fr] gap-4">
                 <div className="space-y-4">
                   <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                    <p className="text-sm font-semibold text-[#414640]">当前身份</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <p className="text-sm font-semibold text-[#414640]">{pickText(HOME_PAGE_COPY.currentRole, language)}</p>
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
                       <SoftChip tone="cream-accent">{briefing.title}</SoftChip>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
                       {briefing.keywords.map((keyword) => (
                         <SoftChip key={keyword} tone="muted">
                           {keyword}
                         </SoftChip>
                       ))}
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-[#6d756c]">{briefing.intro}</p>
+                    <p className={`mt-3 text-sm leading-6 text-[#6d756c] ${language === "en" ? "text-center" : ""}`}>
+                      {briefing.intro}
+                    </p>
                   </div>
 
                   <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                    <p className="text-sm font-semibold text-[#414640]">为什么来到这里</p>
-                    <p className="mt-3 text-sm leading-6 text-[#6d756c]">{briefing.whyHere}</p>
+                    <p className="text-sm font-semibold text-[#414640]">{pickText(HOME_PAGE_COPY.whyHere, language)}</p>
+                    <p className={`mt-3 text-sm leading-6 text-[#6d756c] ${language === "en" ? "text-center" : ""}`}>
+                      {briefing.whyHere}
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                    <p className="text-sm font-semibold text-[#414640]">探索记录</p>
+                    <p className="text-sm font-semibold text-[#414640]">{pickText(HOME_PAGE_COPY.explorationLog, language)}</p>
                     <div
                       ref={logScrollRef}
                       className={`mt-3 ${eventHistory.length > 3 ? "overflow-y-auto pr-1 home-log-scroll" : ""}`}
@@ -237,16 +282,18 @@ export default function MapHomePage() {
                             key={event.id}
                             className="rounded-[22px] bg-[#f1efe7] p-3 shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
                           >
-                            <div className="flex flex-wrap items-center gap-2">
-                              <SoftChip tone="cream-accent">{event.type === "scan" ? "展品" : "NPC"}</SoftChip>
-                              <p className="text-sm font-semibold text-[#465a51]">{getEventTitle(event)}</p>
+                            <div className={`gap-2 ${language === "en" ? "flex flex-col items-start" : "flex flex-wrap items-center"}`}>
+                              <SoftChip tone="cream-accent">
+                                {pickText(event.type === "scan" ? HOME_PAGE_COPY.scanChip : HOME_PAGE_COPY.npcChip, language)}
+                              </SoftChip>
+                              <p className="text-sm font-semibold text-[#465a51]">{getEventTitle(event, language)}</p>
                             </div>
-                            <p className="mt-2 text-sm leading-6 text-[#6d756c]">{getEventDescription(event)}</p>
+                            <p className="mt-2 text-sm leading-6 text-[#6d756c]">{getEventDescription(event, language)}</p>
                           </div>
                         ))
                       ) : (
                         <p className="text-sm leading-6 text-[#7e857b]">
-                          还没有有效记录。先去扫描展品，或通过有效 NPC 对话拿到关键线索。
+                          {pickText(HOME_PAGE_COPY.noLog, language)}
                         </p>
                       )}
                       </div>
@@ -254,16 +301,16 @@ export default function MapHomePage() {
                   </div>
 
                   <div className="rounded-[28px] bg-[#f6f4ee] p-4 shadow-[inset_4px_4px_8px_#e1dcd2,inset_-4px_-4px_8px_#ffffff]">
-                    <p className="text-sm font-semibold text-[#414640]">本轮已收集线索</p>
+                    <p className="text-sm font-semibold text-[#414640]">{pickText(HOME_PAGE_COPY.cluesThisRun, language)}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {collectedClueIds.length ? (
-                        collectedClueIds.map((clueId) => (
+                      {relevantCollectedClueIds.length ? (
+                        relevantCollectedClueIds.map((clueId) => (
                           <SoftChip key={clueId} tone="cream-accent">
-                            {getClueKeyword(clueId)}
+                            {getClueKeyword(clueId, language)}
                           </SoftChip>
                         ))
                       ) : (
-                        <p className="text-sm leading-6 text-[#7e857b]">还没有收集到有效线索。</p>
+                        <p className="text-sm leading-6 text-[#7e857b]">{pickText(HOME_PAGE_COPY.noClues, language)}</p>
                       )}
                     </div>
                   </div>

@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./i18n";
 import type { ClueId, EndingReconstruction } from "./narrative-types";
 
 export const CLUE_KEYWORDS: Record<ClueId, string> = {
@@ -25,6 +26,33 @@ export const CLUE_KEYWORDS: Record<ClueId, string> = {
   F23: "留言墙",
   F24: "共鸣",
   F25: "对话",
+};
+
+export const CLUE_KEYWORDS_EN: Record<ClueId, string> = {
+  F1: "Exchange",
+  F2: "Coin",
+  F3: "Loom",
+  F4: "Celadon",
+  F5: "Rules",
+  F6: "Chariot",
+  F7: "Calligraphy",
+  F8: "Key",
+  F10: "Donation",
+  F11: "Two Objects",
+  F12: "Rite of Passage",
+  F13: "Homesickness",
+  F14: "Homophone",
+  F15: "Ink",
+  F16: "Celebration",
+  F17: "Warmth",
+  F18: "Origins",
+  F19: "Translation",
+  F20: "Internationalisation",
+  F21: "Homesickness",
+  F22: "Two Perspectives",
+  F23: "Message Wall",
+  F24: "Resonance",
+  F25: "Dialogue",
 };
 
 export const STORY_RECONSTRUCTIONS: Record<string, EndingReconstruction> = {
@@ -125,5 +153,114 @@ export const STORY_RECONSTRUCTIONS: Record<string, EndingReconstruction> = {
     sentenceSuffix: "。",
     correctOption: "共鸣",
     distractorOption: "成人礼",
-  }
+  },
 };
+
+export const STORY_RECONSTRUCTIONS_EN: Record<string, EndingReconstruction> = {
+  "p1-forgotten-and-missed": {
+    storyId: "p1-forgotten-and-missed",
+    sentencePrefix: "The once-overlooked",
+    sentenceSuffix: "eventually led both universities back to their earliest exchange.",
+    correctOption: "donation",
+    distractorOption: "chariot",
+  },
+  "p1-gift-timeline": {
+    storyId: "p1-gift-timeline",
+    sentencePrefix: "On this gift timeline, the commemorative coin feels like a shared",
+    sentenceSuffix: ".",
+    correctOption: "rite of passage",
+    distractorOption: "celadon",
+  },
+  "p1-stories-behind-donations": {
+    storyId: "p1-stories-behind-donations",
+    sentencePrefix: "From a shelved donation to a cross-cultural coin, this chapter of campus history becomes",
+    sentenceSuffix: ".",
+    correctOption: "friendship",
+    distractorOption: "chariot",
+  },
+  "p1-key-and-boat": {
+    storyId: "p1-key-and-boat",
+    sentencePrefix: "A key that opens nothing still ties the dream of departure back to campus",
+    sentenceSuffix: ".",
+    correctOption: "growth",
+    distractorOption: "wordplay",
+  },
+  "p2-homophones-and-coins": {
+    storyId: "p2-homophones-and-coins",
+    sentencePrefix: "What makes the celadon elephant hard to translate is the cultural",
+    sentenceSuffix: "behind the word.",
+    correctOption: "meaning",
+    distractorOption: "support",
+  },
+  "p2-warmth-of-handwriting": {
+    storyId: "p2-warmth-of-handwriting",
+    sentencePrefix: "Even when the words are unclear, the calligraphy still speaks through its",
+    sentenceSuffix: ".",
+    correctOption: "ink",
+    distractorOption: "key",
+  },
+  "p2-depth-of-translation": {
+    storyId: "p2-depth-of-translation",
+    sentencePrefix: "Real cross-cultural",
+    sentenceSuffix: "means more than swapping words. It means reading the culture inside them.",
+    correctOption: "translation",
+    distractorOption: "chariot",
+  },
+  "p3-homesickness-and-aesthetics": {
+    storyId: "p3-homesickness-and-aesthetics",
+    sentencePrefix: "In the end, the boat model pulls this story back toward",
+    sentenceSuffix: ".",
+    correctOption: "homesickness",
+    distractorOption: "rules",
+  },
+  "p3-rules-and-change": {
+    storyId: "p3-rules-and-change",
+    sentencePrefix: "Real internationalisation does not erase difference. It makes room for it within shared",
+    sentenceSuffix: ".",
+    correctOption: "rules",
+    distractorOption: "homesickness",
+  },
+  "p3-silent-support-and-genuine-longing": {
+    storyId: "p3-silent-support-and-genuine-longing",
+    sentencePrefix: "What makes the textile moving is not just its pattern, but how it takes us back to the",
+    sentenceSuffix: "of it all.",
+    correctOption: "origin",
+    distractorOption: "aftermath",
+  },
+  "p3-human-voices": {
+    storyId: "p3-human-voices",
+    sentencePrefix: "These interviews gathered more than exhibit facts. They gathered many answers around",
+    sentenceSuffix: ".",
+    correctOption: "internationalisation",
+    distractorOption: "message wall",
+  },
+  "p4-intern-complete-record": {
+    storyId: "p4-intern-complete-record",
+    sentencePrefix: "An educational exhibition first needs a space where people can take",
+    sentenceSuffix: ", before they begin leaving responses.",
+    correctOption: "part",
+    distractorOption: "chariot",
+  },
+  "p4-message-wall-and-chess": {
+    storyId: "p4-message-wall-and-chess",
+    sentencePrefix: "When a chess piece shifts, a static set of rules becomes",
+    sentenceSuffix: ".",
+    correctOption: "dialogue",
+    distractorOption: "homesickness",
+  },
+  "p4-quietness-and-touch": {
+    storyId: "p4-quietness-and-touch",
+    sentencePrefix: "The celadon elephant makes people pause because it first creates shared",
+    sentenceSuffix: ".",
+    correctOption: "resonance",
+    distractorOption: "rite of passage",
+  },
+};
+
+export function getClueKeywordCopy(clueId: ClueId, language: AppLanguage) {
+  return language === "en" ? CLUE_KEYWORDS_EN[clueId] : CLUE_KEYWORDS[clueId];
+}
+
+export function getStoryReconstructionCopy(storyId: string, language: AppLanguage) {
+  return language === "en" ? STORY_RECONSTRUCTIONS_EN[storyId] : STORY_RECONSTRUCTIONS[storyId];
+}

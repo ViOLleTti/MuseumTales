@@ -9,20 +9,20 @@ export const ROLES: RoleMeta[] = [
   },
   {
     id: "P2",
-    title: "汉教助理",
-    titleEn: "Chinese Language Education Assistant",
+    title: "海外生学友",
+    titleEn: "Global Buddy",
     blurb: "关注跨文化、谐音与手写温度。",
   },
   {
     id: "P3",
     title: "校报记者",
-    titleEn: "School Newspaper Reporter",
+    titleEn: "Press Fellow",
     blurb: "关注人物采访与口述史。",
   },
   {
     id: "P4",
     title: "博物馆志愿者",
-    titleEn: "Museum Volunteer",
+    titleEn: "Gallery Guide",
     blurb: "关注公众教育与展陈互动。",
   },
 ];

@@ -6,15 +6,18 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyDialogueResult, useGameStore } from "@/lib/game-store";
 import { NPCS, ROLES } from "@/lib/game-data";
+import { NPC_PAGE_COPY, PAGE_HEADER_COPY, ROLE_SHORT_LABELS, pickText } from "@/lib/i18n";
 import {
   checkEndingUnlock,
   checkNpcDialogueTrigger,
   getExhibitRule,
   getNpcFallbackDialogue,
-  getRoleRuleSet,
+  getTriggerByRewardClue,
 } from "@/lib/narrative-rules";
+import { getRecentClueTopChip } from "@/lib/top-status-chip";
 import type { DialogueCheckResult, DialogueGameEvent } from "@/lib/narrative-types";
 import type { NpcId, RoleId } from "@/lib/types";
+import { useUiStore } from "@/lib/ui-store";
 import girlSmile from "@/assets/png/npc_0.png";
 import boyNeutral from "@/assets/png/npc_1.png";
 import guardNeutral from "@/assets/png/npc_2.png";
@@ -26,6 +29,12 @@ const NPC_SCAN_HINTS: Record<NpcId, string> = {
   N1: "也许先去看看别的展品，会有更清楚的线索浮出来，到时再聊可能更容易串起故事。",
   N2: "你可以先沿着展品再找一点观察线索，说不定下一次回来问，我会更想倾诉点什么。",
   N3: "不妨先去展柜那边转转，等你抓到新的展品线索，我们再继续往下说。",
+};
+
+const NPC_SCAN_HINTS_EN: Record<NpcId, string> = {
+  N1: "You may want to explore a few more exhibits first. The thread may feel clearer when you come back.",
+  N2: "Try picking up a few more details from nearby exhibits. I might have more to say next time.",
+  N3: "Take another walk around the gallery first. Once you find a new clue, we can keep going.",
 };
 
 const DIALOGUE_SECONDARY_TAGS: Record<string, [string, string]> = {
@@ -47,14 +56,33 @@ const DIALOGUE_SECONDARY_TAGS: Record<string, [string, string]> = {
   "P4-E5-N3-F25": ["挪动", "参与"],
 };
 
-function buildScanHint(roleId: RoleId, npcId: NpcId): DialogueCheckResult {
+const DIALOGUE_SECONDARY_TAGS_EN: Record<string, [string, string]> = {
+  "P1-E1-N1-F10": ["Storage", "Origins"],
+  "P1-E7-N1-F11": ["Calligraphy", "Boat Model"],
+  "P1-E2-N2-F12": ["Growth", "Witness"],
+  "P1-E8-N3-F13": ["Waterway", "Longing"],
+  "P2-E4-N1-F14": ["Blessing", "Wordplay"],
+  "P2-E7-N1-F16": ["Wording", "Tone"],
+  "P2-E7-N2-F15": ["Tone", "Negative Space"],
+  "P2-E7-N3-F17": ["Warmth", "Print"],
+  "P3-E3-N1-F18": ["Creation", "Wisdom"],
+  "P3-E8-N3-F21": ["Away", "Home"],
+  "P3-E7-N2-F19": ["Lines", "Breath"],
+  "P3-E5-N2-F20": ["Rules", "Form"],
+  "P3-E6-N1-F22": ["Collaboration", "Conquest"],
+  "P4-E7-N1-F23": ["Gift", "Journey"],
+  "P4-E4-N2-F24": ["Ceramics", "Pause"],
+  "P4-E5-N3-F25": ["Movement", "Participation"],
+};
+
+function buildScanHint(roleId: RoleId, npcId: NpcId, language: "zh" | "en"): DialogueCheckResult {
   return {
     success: true,
     isValidTrigger: false,
     isRepeatedTrigger: false,
     roleId,
     npcId,
-    fallbackDialogue: NPC_SCAN_HINTS[npcId],
+    fallbackDialogue: language === "en" ? NPC_SCAN_HINTS_EN[npcId] : NPC_SCAN_HINTS[npcId],
   };
 }
 
@@ -104,47 +132,65 @@ const VISUAL_NPCS: Record<NpcId, VisualNpcConfig> = {
   },
 };
 
-function getDialogueTone(result: DialogueCheckResult, npcId: NpcId) {
+function getDialogueTone(result: DialogueCheckResult, npcId: NpcId, language: "zh" | "en") {
   if (result.isValidTrigger) {
-    return result.isRepeatedTrigger ? "已记录过" : "有效对话";
+    return result.isRepeatedTrigger
+      ? pickText(NPC_PAGE_COPY.dialogueTone.repeated, language)
+      : pickText(NPC_PAGE_COPY.dialogueTone.valid, language);
   }
 
-  return result.fallbackDialogue === NPC_SCAN_HINTS[npcId] ? "探索提示" : "普通对话";
+  const scanHint = language === "en" ? NPC_SCAN_HINTS_EN[npcId] : NPC_SCAN_HINTS[npcId];
+  return result.fallbackDialogue === scanHint
+    ? pickText(NPC_PAGE_COPY.dialogueTone.hint, language)
+    : pickText(NPC_PAGE_COPY.dialogueTone.regular, language);
 }
 
-function getDialogueTitle(result: DialogueCheckResult, npcName: string, exhibitName?: string) {
+function getDialogueTitle(
+  result: DialogueCheckResult,
+  npcName: string,
+  exhibitName: string | undefined,
+  language: "zh" | "en",
+) {
   if (result.prompt) {
     return result.prompt;
   }
 
-  if (result.fallbackDialogue === NPC_SCAN_HINTS[result.npcId]) {
-    return `${npcName} 的提示`;
+  if (result.fallbackDialogue === (language === "en" ? NPC_SCAN_HINTS_EN[result.npcId] : NPC_SCAN_HINTS[result.npcId])) {
+    return language === "en" ? `${npcName}'s hint` : `${npcName} 的提示`;
   }
 
-  return exhibitName ? `关于 ${exhibitName}，${npcName} 的回应` : `${npcName} 的回应`;
+  return exhibitName
+    ? language === "en"
+      ? `${npcName} on ${exhibitName}`
+      : `关于 ${exhibitName}，${npcName} 的回应`
+    : language === "en"
+      ? `${npcName}'s response`
+      : `${npcName} 的回应`;
 }
 
-function getNpcSpeechLabel(npcId: NpcId) {
-  return NPCS.find((npc) => npc.id === npcId)?.name ?? npcId;
+function getNpcSpeechLabel(npcId: NpcId, language: "zh" | "en") {
+  const npc = NPCS.find((entry) => entry.id === npcId);
+  return npc ? (language === "en" ? npc.nameEn : npc.name) : npcId;
 }
 
-function getDialogueLogResponse(roleId: RoleId, event: DialogueGameEvent) {
-  const trigger = getRoleRuleSet(roleId).triggers.find((entry) => entry.triggerId === event.triggerId);
-  return trigger?.response ?? "这段有效对话已记录。";
+function getDialogueLogResponse(roleId: RoleId, event: DialogueGameEvent, language: "zh" | "en") {
+  const trigger = getTriggerByRewardClue(roleId, event.clueId, language);
+  return trigger?.response ?? pickText(NPC_PAGE_COPY.logFallback, language);
 }
 
-function getDialogueLogTitle(roleId: RoleId, event: DialogueGameEvent) {
-  const trigger = getRoleRuleSet(roleId).triggers.find((entry) => entry.triggerId === event.triggerId);
-  const exhibitName = trigger ? getExhibitRule(trigger.exhibitId).name : getExhibitRule(event.exhibitId).name;
-  return `关于 ${exhibitName}， ${getNpcSpeechLabel(event.npcId)} 说 ：`;
+function getDialogueLogTitle(roleId: RoleId, event: DialogueGameEvent, language: "zh" | "en") {
+  const trigger = getTriggerByRewardClue(roleId, event.clueId, language);
+  const exhibitName = trigger ? getExhibitRule(trigger.exhibitId, language).name : getExhibitRule(event.exhibitId, language).name;
+  const npcName = getNpcSpeechLabel(event.npcId, language);
+  return language === "en" ? `${npcName} on ${exhibitName}:` : `关于 ${exhibitName}， ${npcName} 说 ：`;
 }
 
-function getDialogueLogChips(roleId: RoleId, event: DialogueGameEvent) {
-  const trigger = getRoleRuleSet(roleId).triggers.find((entry) => entry.triggerId === event.triggerId);
-  const primaryKeyword = trigger?.keywords[0] ?? "线索";
-  const secondaryKeywords = DIALOGUE_SECONDARY_TAGS[event.triggerId] ?? [
-    trigger?.keywords[1] ?? "细节",
-    getExhibitRule(event.exhibitId).highlightKeyword,
+function getDialogueLogChips(roleId: RoleId, event: DialogueGameEvent, language: "zh" | "en") {
+  const trigger = getTriggerByRewardClue(roleId, event.clueId, language);
+  const primaryKeyword = trigger?.keywords[0] ?? pickText(NPC_PAGE_COPY.keywordFallbacks.clue, language);
+  const secondaryKeywords = (language === "en" ? DIALOGUE_SECONDARY_TAGS_EN : DIALOGUE_SECONDARY_TAGS)[event.triggerId] ?? [
+    trigger?.keywords[1] ?? pickText(NPC_PAGE_COPY.keywordFallbacks.detail, language),
+    getExhibitRule(event.exhibitId, language).highlightKeyword,
   ];
 
   return {
@@ -156,11 +202,13 @@ function getDialogueLogChips(roleId: RoleId, event: DialogueGameEvent) {
 function SoftChip({
   children,
   tone = "default",
+  className = "",
 }: {
   children: React.ReactNode;
   tone?: "default" | "accent" | "muted" | "cream-accent";
+  className?: string;
 }) {
-  const className =
+  const toneClassName =
     tone === "cream-accent"
       ? "bg-[#f1efe7] text-[#527a67] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
       : tone === "accent"
@@ -170,7 +218,9 @@ function SoftChip({
         : "bg-[#f1efe7] text-[#4e5751] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]";
 
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${className}`}>
+    <span
+      className={`inline-flex max-w-full items-center justify-center rounded-full px-3 py-1.5 text-center text-xs font-semibold leading-tight whitespace-normal ${toneClassName} ${className}`}
+    >
       {children}
     </span>
   );
@@ -209,6 +259,7 @@ export default function NpcPage() {
   const router = useRouter();
   const mainRef = useRef<HTMLElement | null>(null);
   const npcButtonRefs = useRef<Partial<Record<NpcId, HTMLButtonElement | null>>>({});
+  const language = useUiStore((state) => state.language);
   const roleId = useGameStore((state) => state.selectedRole);
   const collectedClueIds = useGameStore((state) => state.collectedClueIds);
   const scannedExhibits = useGameStore((state) => state.scannedExhibits);
@@ -271,24 +322,23 @@ export default function NpcPage() {
     return null;
   }
 
+  const isEnglish = language === "en";
   const currentRoleId = roleId;
   const currentRoleLabel =
-    {
-      P1: "档案员",
-      P2: "汉教助理",
-      P3: "校报记者",
-      P4: "志愿者",
-    }[currentRoleId] ?? ROLES.find((role) => role.id === currentRoleId)?.title ?? currentRoleId;
-  const currentExhibit = lastScannedExhibitId ? getExhibitRule(lastScannedExhibitId) : null;
+    pickText(ROLE_SHORT_LABELS[currentRoleId], language) ??
+    ROLES.find((role) => role.id === currentRoleId)?.[isEnglish ? "titleEn" : "title"] ??
+    currentRoleId;
+  const currentExhibit = lastScannedExhibitId ? getExhibitRule(lastScannedExhibitId, language) : null;
   const dialogueHistory = eventHistory.filter((event): event is DialogueGameEvent => event.type === "dialogue");
   const latestDialogueEvent = dialogueHistory.at(-1) ?? null;
   const activeNpcId = dialogueResult?.npcId ?? null;
+  const recentClueTopChip = getRecentClueTopChip(eventHistory, currentRoleId, language);
 
   function handleNpcClick(npcId: NpcId, anchorElement: HTMLButtonElement | null) {
     let result: DialogueCheckResult;
 
     if (!currentExhibit) {
-      result = buildScanHint(currentRoleId, npcId);
+      result = buildScanHint(currentRoleId, npcId, language);
     } else {
       const checkedResult = checkNpcDialogueTrigger({
         roleId: currentRoleId,
@@ -296,6 +346,7 @@ export default function NpcPage() {
         npcId,
         scannedExhibits,
         consumedTriggerIds,
+        language,
       });
 
       result = checkedResult.isValidTrigger
@@ -303,7 +354,7 @@ export default function NpcPage() {
         : {
             ...checkedResult,
             isValidTrigger: false,
-            fallbackDialogue: getNpcFallbackDialogue(npcId),
+            fallbackDialogue: getNpcFallbackDialogue(npcId, language),
           };
     }
 
@@ -322,16 +373,26 @@ export default function NpcPage() {
           className="relative isolate flex min-h-full flex-col overflow-x-hidden overflow-y-auto bg-[#f1efe7] text-[#424542]"
         >
           <div className="sticky top-0 z-0 bg-[#f1efe7]/92 px-4 pb-4 pt-6">
-            <div className="mx-auto max-w-[290px] rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
-              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">Investigation</p>
-              <h1 className="mt-1 text-[15px] font-bold tracking-[0.12em] text-[#424542]">展馆事件</h1>
+            <div
+              className={`mx-auto rounded-[26px] bg-[#f1efe7] px-6 py-3 text-center shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff] ${
+                isEnglish ? "max-w-[320px]" : "max-w-[290px]"
+              }`}
+            >
+              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#94b5a9]">{PAGE_HEADER_COPY.npc.eyebrow}</p>
+              <h1 className={`mt-1 font-bold text-[#424542] ${isEnglish ? "text-[14px] tracking-[0.08em]" : "text-[15px] tracking-[0.12em]"}`}>
+                {pickText(PAGE_HEADER_COPY.npc.title, language)}
+              </h1>
             </div>
 
             <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <SoftChip tone="cream-accent">{currentRoleLabel}</SoftChip>
-              <SoftChip tone="cream-accent">
-                {currentExhibit ? currentExhibit.name : "未扫描展品"}
+              <SoftChip tone="cream-accent" className={isEnglish ? "min-w-[10ch]" : ""}>
+                {currentRoleLabel}
               </SoftChip>
+              {recentClueTopChip ? (
+                <SoftChip tone="cream-accent" className={isEnglish ? "min-w-[10ch]" : ""}>
+                  {recentClueTopChip}
+                </SoftChip>
+              ) : null}
             </div>
           </div>
 
@@ -390,7 +451,7 @@ export default function NpcPage() {
 
                         <Image
                           src={currentImage}
-                          alt={npc.name}
+                          alt={isEnglish ? npc.nameEn : npc.name}
                           priority
                           className={`pointer-events-none absolute bottom-[-20px] left-1/2 -translate-x-1/2 object-contain object-bottom transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${visualNpc.imageClassName} ${poseClassName}`}
                           style={{
@@ -403,13 +464,13 @@ export default function NpcPage() {
 
                         <div className="absolute bottom-2 z-20 flex w-full justify-center">
                           <span
-                            className={`rounded-full px-3 py-1.5 text-[11px] font-bold tracking-wide ${
+                            className={`inline-flex min-h-[2.25rem] max-w-[92%] items-center justify-center rounded-full px-3 py-1.5 text-center text-[11px] font-bold leading-tight tracking-wide whitespace-normal ${
                               isSpeaking
                                 ? "bg-[#f7f4ee] text-[#77a08e] shadow-[4px_4px_10px_#d3d0c7,-4px_-4px_10px_#fff]"
                                 : "bg-[#f7f4ee] text-[#70786f] shadow-[4px_4px_10px_#d3d0c7,-4px_-4px_10px_#fff]"
                             }`}
                           >
-                            {npc.name}
+                            {isEnglish ? npc.nameEn : npc.name}
                           </span>
                         </div>
                       </button>
@@ -424,7 +485,7 @@ export default function NpcPage() {
               <div className="flex items-center justify-center">
                 <div className="min-w-[270px] rounded-full bg-[#f1efe7] px-8 py-3 shadow-[inset_4px_4px_8px_#d5d2c8,inset_-4px_-4px_8px_#ffffff]">
                   <p className="text-center text-sm font-semibold text-[#6f7e76]">
-                    分别点击不同人物获取线索
+                    {pickText(NPC_PAGE_COPY.panelPrompt, language)}
                   </p>
                 </div>
               </div>
@@ -446,22 +507,22 @@ export default function NpcPage() {
                 {latestDialogueEvent ? (
                   <>
                     <p className="text-sm font-semibold text-[#414640]">
-                      {getDialogueLogTitle(currentRoleId, latestDialogueEvent)}
+                      {getDialogueLogTitle(currentRoleId, latestDialogueEvent, language)}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-[#6d756c]">
-                      {getDialogueLogResponse(currentRoleId, latestDialogueEvent)}
+                      {getDialogueLogResponse(currentRoleId, latestDialogueEvent, language)}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <SoftChip tone="cream-accent">
-                        {getDialogueLogChips(currentRoleId, latestDialogueEvent).primaryKeyword}
+                        {getDialogueLogChips(currentRoleId, latestDialogueEvent, language).primaryKeyword}
                       </SoftChip>
-                      {getDialogueLogChips(currentRoleId, latestDialogueEvent).secondaryKeywords.map((keyword) => (
+                      {getDialogueLogChips(currentRoleId, latestDialogueEvent, language).secondaryKeywords.map((keyword) => (
                         <SoftChip key={keyword}>{keyword}</SoftChip>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm leading-6 text-[#7e857b]">还没有有效对话记录，先尝试点击上方人物。</p>
+                  <p className="text-sm leading-6 text-[#7e857b]">{pickText(NPC_PAGE_COPY.noDialogueRecord, language)}</p>
                 )}
               </div>
 
@@ -471,11 +532,11 @@ export default function NpcPage() {
                   className="mt-4 w-full rounded-[28px] bg-[#f1efe7] px-5 py-4 text-sm font-bold text-[#527a67] shadow-[6px_6px_12px_#d5d2c8,-6px_-6px_12px_#ffffff] transition hover:text-[#456a5d]"
                   onClick={() => router.push(`/reconstruct/${unlockedEnding.storyId}`)}
                 >
-                  已满足结局条件，进入故事还原页
+                  {pickText(NPC_PAGE_COPY.unlockCta, language)}
                 </button>
               ) : (
                 <p className="mt-4 text-center text-sm leading-6 text-[#7b8379]">
-                  如未触发有效对话，可以返回 Scan 重新输入其他展品编号继续探索。
+                  {pickText(NPC_PAGE_COPY.unlockHint, language)}
                 </p>
               )}
             </section>

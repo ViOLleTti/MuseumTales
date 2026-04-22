@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useGameStore } from "@/lib/game-store";
+import { ROLE_PAGE_COPY, pickText } from "@/lib/i18n";
+import { useUiStore } from "@/lib/ui-store";
 import type { RoleId } from "@/lib/types";
 
 const COLORS = {
@@ -16,6 +18,10 @@ const COLORS = {
 
 const shadowRaised = "shadow-[8px_8px_16px_rgba(206,202,189,0.5),-8px_-8px_16px_rgba(255,255,255,0.9)]";
 const shadowRaisedSm = "shadow-[4px_4px_10px_rgba(206,202,189,0.4),-4px_-4px_10px_rgba(255,255,255,0.9)]";
+const shadowInsetPanel =
+  "shadow-[inset_4px_4px_8px_rgba(225,220,210,0.95),inset_-4px_-4px_8px_rgba(255,255,255,0.95)]";
+const shadowInsetPanelSm =
+  "shadow-[inset_2px_2px_4px_rgba(225,220,210,0.9),inset_-2px_-2px_4px_rgba(255,255,255,0.95)]";
 const shadowInsetCircle =
   "shadow-[inset_6px_6px_12px_rgba(206,202,189,0.6),inset_-6px_-6px_12px_rgba(255,255,255,0.9)]";
 const shadowRaisedCircle =
@@ -23,30 +29,30 @@ const shadowRaisedCircle =
 
 type RoleCard = {
   id: RoleId;
-  title: string;
-  description: string;
+  title: { zh: string; en: string };
+  description: { zh: string; en: string };
 };
 
 const ROLE_CARDS: RoleCard[] = [
   {
     id: "P1",
-    title: "校史档案员",
-    description: "发掘校史底蕴，整理档案资料，成为校园历史的守护者与传承人。",
+    title: ROLE_PAGE_COPY.cards.P1.title,
+    description: ROLE_PAGE_COPY.cards.P1.description,
   },
   {
     id: "P2",
-    title: "汉教助理",
-    description: "辅助国际学生汉语教学，搭建中外文化交流的友好桥梁。",
+    title: ROLE_PAGE_COPY.cards.P2.title,
+    description: ROLE_PAGE_COPY.cards.P2.description,
   },
   {
     id: "P3",
-    title: "校报记者",
-    description: "奔走校园一线，洞察师生百态，用文字与镜头记录真实瞬间。",
+    title: ROLE_PAGE_COPY.cards.P3.title,
+    description: ROLE_PAGE_COPY.cards.P3.description,
   },
   {
     id: "P4",
-    title: "博物馆志愿者",
-    description: "探秘高校博物馆，普及文物知识，讲述藏品背后鲜为人知的故事。",
+    title: ROLE_PAGE_COPY.cards.P4.title,
+    description: ROLE_PAGE_COPY.cards.P4.description,
   },
 ];
 
@@ -55,7 +61,7 @@ function ArchiveIcon({ className = "" }: { className?: string }) {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      stroke={COLORS.sage}
+      stroke="currentColor"
       strokeWidth="1.8"
       className={className}
     >
@@ -71,7 +77,7 @@ function BookOpenIcon({ className = "" }: { className?: string }) {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      stroke={COLORS.sage}
+      stroke="currentColor"
       strokeWidth="1.8"
       className={className}
     >
@@ -86,7 +92,7 @@ function NewspaperIcon({ className = "" }: { className?: string }) {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      stroke={COLORS.sage}
+      stroke="currentColor"
       strokeWidth="1.8"
       className={className}
     >
@@ -103,7 +109,7 @@ function LandmarkIcon({ className = "" }: { className?: string }) {
     <svg
       viewBox="0 0 24 24"
       fill="none"
-      stroke={COLORS.sage}
+      stroke="currentColor"
       strokeWidth="1.8"
       className={className}
     >
@@ -128,6 +134,7 @@ const ROLE_ICONS: Record<RoleId, ({ className }: { className?: string }) => JSX.
 export default function RolePage() {
   const router = useRouter();
   const selectRole = useGameStore((state) => state.selectRole);
+  const language = useUiStore((state) => state.language);
   const [activeRole, setActiveRole] = useState<RoleId>("P1");
   const [isReady, setIsReady] = useState(false);
   const [shouldSpringCards, setShouldSpringCards] = useState(false);
@@ -146,6 +153,7 @@ export default function RolePage() {
     () => ROLE_CARDS.find((card) => card.id === activeRole) ?? ROLE_CARDS[0],
     [activeRole],
   );
+  const isEnglish = language === "en";
 
   return (
     <div className="phone-stage bg-[#e8e5dd]">
@@ -175,9 +183,14 @@ export default function RolePage() {
 
               <h1
                 className="mt-2 text-center"
-                style={{ color: COLORS.textMain, fontSize: 19, fontWeight: 600, letterSpacing: "0.05em" }}
+                style={{
+                  color: COLORS.textMain,
+                  fontSize: isEnglish ? 18 : 19,
+                  fontWeight: 600,
+                  letterSpacing: isEnglish ? "0.02em" : "0.05em",
+                }}
               >
-                请选择您的专属身份
+                {pickText(ROLE_PAGE_COPY.title, language)}
               </h1>
 
               <div className="mt-1 flex items-center gap-2">
@@ -200,15 +213,17 @@ export default function RolePage() {
                   key={role.id}
                   type="button"
                   onClick={() => setActiveRole(role.id)}
-                  className={`w-full rounded-[22px] border-[1.5px] p-5 text-left transition-[border-color,box-shadow] duration-300 ${
+                  className={`w-full rounded-[28px] border p-4 text-left transition-[border-color,box-shadow,transform,background-color] duration-300 ${
                     shouldSpringCards
                       ? "role-card-spring-up"
                       : isReady
                         ? "role-card-reveal"
                         : "role-card-preenter"
-                  } ${isSelected ? "border-[#94b5a9]" : "border-transparent"} ${shadowRaised}`}
+                  } ${isSelected ? "border-[#c7d8d1]" : "border-[rgba(255,255,255,0.45)]"} ${
+                    isSelected ? shadowRaised : shadowInsetPanel
+                  }`}
                   style={{
-                    backgroundColor: COLORS.bg,
+                    backgroundColor: isSelected ? COLORS.bg : "#f6f4ee",
                     animationDelay: shouldSpringCards
                       ? `${index * 0.15}s`
                       : isReady
@@ -219,34 +234,40 @@ export default function RolePage() {
                 >
                   <div className="flex items-center gap-4">
                     <div
-                      className={`flex h-[50px] w-[50px] flex-shrink-0 items-center justify-center rounded-[22px] ${shadowRaisedSm}`}
+                      className={`flex h-[56px] w-[56px] flex-shrink-0 items-center justify-center rounded-[20px] border border-white/60 ${
+                        isSelected ? shadowRaisedSm : shadowInsetPanelSm
+                      }`}
                       style={{ backgroundColor: COLORS.bg }}
                     >
-                      <Icon className="h-[22px] w-[22px]" />
+                      <Icon
+                        className={`h-[24px] w-[24px] ${
+                          isSelected ? "text-[#94b5a9]" : "text-[#b7c4be]"
+                        }`}
+                      />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex items-center gap-2">
+                      <div className="mb-2 flex items-center gap-3">
                         <h3
                           style={{
                             color: COLORS.textMain,
-                            fontSize: 16,
+                            fontSize: isEnglish ? 16 : 17,
                             fontWeight: 600,
-                            letterSpacing: "0.04em",
+                            letterSpacing: isEnglish ? "0.01em" : "0.04em",
                           }}
                         >
-                          {role.title}
+                          {pickText(role.title, language)}
                         </h3>
                       </div>
                       <p
                         style={{
                           color: COLORS.textMuted,
-                          fontSize: 12,
-                          lineHeight: 1.5,
+                          fontSize: 13,
+                          lineHeight: 1.6,
                           fontWeight: 400,
                         }}
                       >
-                        {role.description}
+                        {pickText(role.description, language)}
                       </p>
                     </div>
                   </div>
@@ -283,10 +304,10 @@ export default function RolePage() {
                 color: activeCard ? COLORS.white : COLORS.textMuted,
                 fontSize: 16,
                 fontWeight: 600,
-                letterSpacing: "0.08em",
+                letterSpacing: isEnglish ? "0.04em" : "0.08em",
               }}
             >
-              确认出发
+              {pickText(ROLE_PAGE_COPY.cta, language)}
             </span>
             <svg
               viewBox="0 0 24 24"

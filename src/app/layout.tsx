@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { LanguageSync } from "@/components/language-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "廿载交汇 · 故事还原",
-  description: "博物馆互动叙事原型（单机本地闭环）",
+  title: "Crossroads of Twenty Years · Story Reconstruction",
+  description: "An interactive museum narrative prototype.",
 };
 
 export default function RootLayout({
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <LanguageSync />
+        {children}
+      </body>
     </html>
   );
 }

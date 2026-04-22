@@ -20,6 +20,7 @@ interface GameState {
   submittedResults: Record<string, StoryResult>;
   selectRole: (roleId: RoleId) => void;
   resetRun: () => void;
+  resetProgressForNextEnding: () => void;
   scanExhibit: (exhibitId: ExhibitId) => void;
   applyDialogueResult: (result: DialogueCheckResult) => void;
   rollbackLatestDialogueProgress: () => void;
@@ -58,6 +59,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastScannedExhibitId: null,
       submittedResults: {},
     }),
+  resetProgressForNextEnding: () =>
+    set((state) => ({
+      selectedRole: state.selectedRole,
+      collectedClueIds: [],
+      scannedExhibits: [],
+      consumedTriggerIds: [],
+      eventHistory: [],
+      viewedEndingStoryIds: state.viewedEndingStoryIds,
+      lastScannedExhibitId: null,
+      submittedResults: state.submittedResults,
+    })),
   scanExhibit: (exhibitId) => {
     const exhibit = getExhibitRule(exhibitId);
 
@@ -168,6 +180,10 @@ export function hasScannedExhibit(exhibitId: ExhibitId) {
 
 export function scanExhibit(exhibitId: ExhibitId) {
   useGameStore.getState().scanExhibit(exhibitId);
+}
+
+export function resetProgressForNextEnding() {
+  useGameStore.getState().resetProgressForNextEnding();
 }
 
 export function applyDialogueResult(result: DialogueCheckResult) {
