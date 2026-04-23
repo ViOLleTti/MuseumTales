@@ -165,9 +165,17 @@ export default function EndPage() {
     router.push("/role");
   }
 
+  function normalizeNicknameInput(value: string) {
+    return value.trim();
+  }
+
+  function isValidNickname(value: string) {
+    return /^[A-Za-z]{2,10}$/.test(value);
+  }
+
   async function createAnonymousPlayer(rawNickname: string) {
-    const normalizedNickname = rawNickname.trim().replace(/\s+/g, " ");
-    if (!normalizedNickname) {
+    const normalizedNickname = normalizeNicknameInput(rawNickname);
+    if (!isValidNickname(normalizedNickname)) {
       throw new Error(pickText(END_PAGE_COPY.rankingInputRequired, language));
     }
 
@@ -250,7 +258,7 @@ export default function EndPage() {
       setIsSubmittingRank(true);
       await submitRanking(existingPlayerId);
       resetProgressForNextEnding();
-      router.push("/profile");
+      router.replace(`/profile?roleId=${currentRoleId}`);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : pickText(END_PAGE_COPY.rankingFailed, language));
     } finally {
@@ -269,7 +277,7 @@ export default function EndPage() {
       const playerId = await createAnonymousPlayer(nickname);
       await submitRanking(playerId);
       resetProgressForNextEnding();
-      router.push("/profile");
+      router.replace(`/profile?roleId=${currentRoleId}`);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : pickText(END_PAGE_COPY.rankingFailed, language));
     } finally {
@@ -437,9 +445,9 @@ export default function EndPage() {
                       id="leaderboard-nickname"
                       type="text"
                       value={nickname}
-                      onChange={(event) => setNickname(event.target.value)}
+                      onChange={(event) => setNickname(event.target.value.replace(/[^A-Za-z]/g, "").slice(0, 10))}
                       placeholder={pickText(END_PAGE_COPY.nicknamePlaceholder, language)}
-                      maxLength={20}
+                      maxLength={10}
                       className="mt-4 w-full rounded-2xl bg-[#F2F0EC] px-4 py-3 text-sm text-[#5A5A5A] shadow-[inset_4px_4px_8px_#D1CDC3,inset_-4px_-4px_8px_#FFFFFF] outline-none placeholder:text-[#A3A09A]"
                     />
                     <div className="mt-4 grid grid-cols-2 gap-3">

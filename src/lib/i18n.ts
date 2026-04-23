@@ -162,12 +162,15 @@ export const END_PAGE_COPY = {
   continueScan: { zh: "返回扫码页继续探索", en: "Back to Explore" },
   switchRole: { zh: "更换身份", en: "Switch Role" },
   viewRanking: { zh: "查看排名", en: "View Ranking" },
-  nicknameLabel: { zh: "请输入昵称", en: "Choose a Nickname" },
-  nicknamePlaceholder: { zh: "2-20 个字符", en: "2-20 characters" },
+  nicknameLabel: { zh: "请输入 昵称", en: "Choose a  Nickname" },
+  nicknamePlaceholder: { zh: "2-10 个字符", en: "2-10 letters" },
   submitRanking: { zh: "确认并查看排名", en: "Save and View Ranking" },
   submitting: { zh: "提交中...", en: "Submitting..." },
   cancel: { zh: "取消", en: "Cancel" },
-  rankingInputRequired: { zh: "请输入昵称后再查看当前排名。", en: "Please enter a nickname before viewing your ranking." },
+  rankingInputRequired: {
+    zh: "请输入昵称后再查看当前排名。",
+    en: "Please enter a nickname before viewing your ranking.",
+  },
   playerInitFailed: { zh: "创建匿名玩家失败。", en: "Could not create an anonymous player." },
   rankingFailed: { zh: "排行榜同步失败。", en: "Could not sync the leaderboard." },
 } as const;

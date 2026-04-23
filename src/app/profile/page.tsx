@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useGameStore } from "@/lib/game-store";
 import { ROLES } from "@/lib/game-data";
 import { PAGE_HEADER_COPY, PROFILE_PAGE_COPY, ROLE_SHORT_LABELS, formatDuration, formatScore, pickText } from "@/lib/i18n";
@@ -16,6 +16,7 @@ import {
   type LastRunResult,
   type LeaderboardItem,
 } from "@/lib/leaderboard-client";
+import type { RoleId } from "@/lib/types";
 
 type LeaderboardTab = "role" | "global";
 
@@ -50,6 +51,7 @@ function SoftChip({
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const roleId = useGameStore((state) => state.selectedRole);
   const language = useUiStore((state) => state.language);
   const [activeTab, setActiveTab] = useState<LeaderboardTab>("role");
@@ -59,19 +61,23 @@ export default function ProfilePage() {
   const [roleLeaderboard, setRoleLeaderboard] = useState<LeaderboardBundleResponse["role"] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const roleIdFromQuery = searchParams.get("roleId");
+  const activeRoleId = roleId ?? (roleIdFromQuery === "P1" || roleIdFromQuery === "P2" || roleIdFromQuery === "P3" || roleIdFromQuery === "P4"
+    ? (roleIdFromQuery as RoleId)
+    : null);
 
   useEffect(() => {
-    if (!roleId) {
+    if (!activeRoleId) {
       router.replace("/role");
     }
-  }, [roleId, router]);
+  }, [activeRoleId, router]);
 
   useEffect(() => {
-    if (!roleId) {
+    if (!activeRoleId) {
       return;
     }
 
-    const currentRoleId = roleId;
+    const currentRoleId = activeRoleId;
     const storedNickname = window.localStorage.getItem(PLAYER_NICKNAME_STORAGE_KEY);
     const playerId = window.localStorage.getItem(PLAYER_ID_STORAGE_KEY);
     const rawLastRun = window.sessionStorage.getItem(LAST_RUN_RESULT_STORAGE_KEY);
@@ -118,17 +124,17 @@ export default function ProfilePage() {
     }
 
     void loadLeaderboards();
-  }, [language, roleId]);
+  }, [activeRoleId, language]);
 
-  if (!roleId) {
+  if (!activeRoleId) {
     return null;
   }
 
   const isEnglish = language === "en";
   const displayNickname = playerNickname || pickText(PROFILE_PAGE_COPY.anonymousPlayer, language);
-  const currentRole = ROLES.find((role) => role.id === roleId);
-  const currentRoleTitle = currentRole?.[isEnglish ? "titleEn" : "title"] ?? roleId;
-  const topRoleLabel = pickText(ROLE_SHORT_LABELS[roleId], language);
+  const currentRole = ROLES.find((role) => role.id === activeRoleId);
+  const currentRoleTitle = currentRole?.[isEnglish ? "titleEn" : "title"] ?? activeRoleId;
+  const topRoleLabel = pickText(ROLE_SHORT_LABELS[activeRoleId], language);
   const activeLeaderboard = activeTab === "role" ? roleLeaderboard : globalLeaderboard;
   const bestItem = roleLeaderboard?.myBest ?? globalLeaderboard?.myBest ?? null;
 

@@ -2,7 +2,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { HttpError } from "./http-error";
 
 const NICKNAME_MIN_LENGTH = 2;
-const NICKNAME_MAX_LENGTH = 20;
+const NICKNAME_MAX_LENGTH = 10;
+const NICKNAME_PATTERN = /^[A-Za-z]+$/;
 
 interface PlayerRow {
   id: string;
@@ -10,7 +11,7 @@ interface PlayerRow {
 }
 
 function normalizeNickname(value: string) {
-  return value.trim().replace(/\s+/g, " ");
+  return value.trim();
 }
 
 export function validateNickname(value: unknown) {
@@ -20,8 +21,12 @@ export function validateNickname(value: unknown) {
 
   const nickname = normalizeNickname(value);
 
-  if (nickname.length < NICKNAME_MIN_LENGTH || nickname.length > NICKNAME_MAX_LENGTH) {
-    throw new HttpError(400, "Nickname must be between 2 and 20 characters.");
+  if (
+    nickname.length < NICKNAME_MIN_LENGTH ||
+    nickname.length > NICKNAME_MAX_LENGTH ||
+    !NICKNAME_PATTERN.test(nickname)
+  ) {
+    throw new HttpError(400, "Nickname must use 2-10 letters.");
   }
 
   return nickname;
