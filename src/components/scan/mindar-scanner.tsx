@@ -91,6 +91,7 @@ export function MindArScanner({
   const resolvedHostClassName =
     hostClassName || "rounded-[2rem] border-4 border-dashed border-emerald-500 bg-slate-950/90";
   const resolvedStatusClassName = statusClassName || "bg-[rgba(16,17,16,0.72)] text-white";
+  const showCenteredLoadingState = status === "loading";
 
   const targetRules = useMemo(
     () =>
@@ -299,11 +300,21 @@ export function MindArScanner({
           scannerEnabled ? "min-h-[24rem]" : "hidden"
         } ${resolvedHostClassName}`}
       >
-        <div
-          className={`absolute inset-x-3 top-3 z-20 rounded-2xl px-3 py-2 text-xs leading-5 backdrop-blur ${resolvedStatusClassName}`}
-        >
-          <p>{statusText}</p>
-        </div>
+        {showCenteredLoadingState ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center px-6 text-center">
+            <div
+              className={`rounded-2xl px-5 py-3 text-sm font-semibold leading-6 backdrop-blur ${resolvedStatusClassName}`}
+            >
+              <p>正在加载 MindAR 扫描环境...</p>
+            </div>
+          </div>
+        ) : (
+          <div
+            className={`absolute inset-x-3 top-3 z-20 rounded-2xl px-3 py-2 text-xs leading-5 backdrop-blur ${resolvedStatusClassName}`}
+          >
+            <p>{statusText}</p>
+          </div>
+        )}
       </div>
     </div>
   );
