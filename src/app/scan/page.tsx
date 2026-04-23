@@ -4,11 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { ExhibitHole, ExhibitSticker } from "@/components/exhibit-stickers";
-import {
-  SCAN_RUNTIME_DETECTED_EVENT,
-  SCAN_RUNTIME_HOST_CLASSNAME,
-  SCAN_RUNTIME_SLOT_ATTRIBUTE,
-} from "@/components/scan/runtime-events";
+import { MindArScanner } from "@/components/scan/mindar-scanner";
 import { ROLES } from "@/lib/game-data";
 import { scanExhibit, useGameStore } from "@/lib/game-store";
 import { PAGE_HEADER_COPY, ROLE_SHORT_LABELS, SCAN_PAGE_COPY, pickText } from "@/lib/i18n";
@@ -388,20 +384,6 @@ export default function ScanPage() {
     [clearAnimationTimers, language],
   );
 
-  useEffect(() => {
-    const handleRuntimeDetect = (event: Event) => {
-      const exhibitId = (event as CustomEvent<{ exhibitId?: ExhibitId }>).detail?.exhibitId;
-      if (exhibitId) {
-        handleDetectedExhibit(exhibitId);
-      }
-    };
-
-    window.addEventListener(SCAN_RUNTIME_DETECTED_EVENT, handleRuntimeDetect);
-    return () => {
-      window.removeEventListener(SCAN_RUNTIME_DETECTED_EVENT, handleRuntimeDetect);
-    };
-  }, [handleDetectedExhibit]);
-
   if (!roleId) {
     return null;
   }
@@ -447,8 +429,8 @@ export default function ScanPage() {
             </div>
           </div>
 
-          <div ref={animationContainerRef} className="relative flex-1 overflow-visible px-4 pb-6">
-            <section className="relative mt-1 overflow-visible">
+          <div ref={animationContainerRef} className="relative z-30 flex-1 overflow-visible px-4 pb-6">
+            <section className="relative z-30 mt-1 overflow-visible">
               <div className="relative rounded-[36px] px-3 pb-3 pt-5">
                 <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[36px] bg-[#e8e5dd] shadow-[inset_0_10px_20px_rgba(213,210,200,0.55)]">
                   <div className="absolute -left-[15%] -top-[10%] h-[350px] w-[350px] rounded-full bg-[#e8e5dd] opacity-90 shadow-[inset_15px_15px_40px_#d5d2c8,inset_-15px_-15px_40px_#ffffff]" />
@@ -456,11 +438,13 @@ export default function ScanPage() {
                   <div className="absolute -bottom-[10%] left-1/2 h-[250px] w-[500px] -translate-x-1/2 rounded-[100%] bg-[#e8e5dd] opacity-80 shadow-[inset_0_20px_50px_#d5d2c8,inset_0_-10px_20px_#ffffff]" />
                 </div>
 
-                <div className="relative overflow-visible">
-                  <div
-                    {...{ [SCAN_RUNTIME_SLOT_ATTRIBUTE]: "true" }}
-                    className={`pointer-events-none min-h-[24rem] rounded-[32px] ${SCAN_RUNTIME_HOST_CLASSNAME}`}
-                    aria-hidden="true"
+                <div className="relative z-10 overflow-visible">
+                  <MindArScanner
+                    onDetect={handleDetectedExhibit}
+                    autoStart
+                    showControls={false}
+                    hostClassName="min-h-[24rem] rounded-[32px] border border-[rgba(255,255,255,0.65)] bg-[#f6f4ee] shadow-[8px_8px_18px_#d5d2c8,-8px_-8px_18px_#ffffff,inset_3px_3px_8px_#e5e0d6,inset_-3px_-3px_8px_#ffffff]"
+                    statusClassName="bg-[rgba(241,239,231,0.92)] text-[#68756b] shadow-[4px_4px_10px_rgba(213,210,200,0.65),-4px_-4px_10px_rgba(255,255,255,0.8)] backdrop-blur border border-white/40"
                   />
                   <ScanBurstOverlay burst={scanBurst} hiddenSlots={hiddenBurstSlots} onBurstRef={setBurstChipRef} />
                 </div>

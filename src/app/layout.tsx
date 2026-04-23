@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { LanguageSync } from "@/components/language-sync";
-import { PersistentScanLayer } from "@/components/scan/persistent-scan-layer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +21,6 @@ export default function RootLayout({
         <Script src="/vendor/mindar-image-aframe.prod.js" strategy="afterInteractive" />
         <LanguageSync />
         {children}
-        <PersistentScanLayer />
         <Analytics />
       </body>
     </html>
