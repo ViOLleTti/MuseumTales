@@ -35,18 +35,6 @@ function loadScriptOnce(src: string): Promise<void> {
   return promise;
 }
 
-async function hasCompiledTargets(): Promise<boolean> {
-  try {
-    const response = await fetch(COMPILED_TARGETS_URL, {
-      method: "HEAD",
-      cache: "no-store",
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
 type ScannerStatus = "idle" | "loading" | "ready" | "error";
 
 type MindArSystem = {
@@ -77,14 +65,18 @@ function ensureInlineVideoPlayback(host: HTMLElement) {
 
 export function MindArScanner({
   onDetect,
+  enabled,
   autoStart = false,
   showControls = true,
+  wrapperClassName = "",
   hostClassName = "",
   statusClassName = "",
 }: {
   onDetect: (exhibitId: ExhibitId) => void;
+  enabled?: boolean;
   autoStart?: boolean;
   showControls?: boolean;
+  wrapperClassName?: string;
   hostClassName?: string;
   statusClassName?: string;
 }) {
@@ -92,7 +84,7 @@ export function MindArScanner({
   const cleanupSceneRef = useRef<(() => void) | null>(null);
   const lastDetectedRef = useRef<{ exhibitId: ExhibitId; at: number } | null>(null);
   const onDetectRef = useRef(onDetect);
-  const [scannerEnabled, setScannerEnabled] = useState(autoStart);
+  const [scannerEnabled, setScannerEnabled] = useState(enabled ?? autoStart);
   const [status, setStatus] = useState<ScannerStatus>("idle");
   const [statusText, setStatusText] = useState("点击下方按钮启动 MindAR 扫描。");
   const [imageTargetSrc, setImageTargetSrc] = useState<string | null>(null);
@@ -111,6 +103,12 @@ export function MindArScanner({
   useEffect(() => {
     onDetectRef.current = onDetect;
   }, [onDetect]);
+
+  useEffect(() => {
+    if (typeof enabled === "boolean") {
+      setScannerEnabled(enabled);
+    }
+  }, [enabled]);
 
   useEffect(() => {
     return () => {
@@ -142,15 +140,9 @@ export function MindArScanner({
           return;
         }
 
-        const compiledTargetsExist = await hasCompiledTargets();
-
-        if (compiledTargetsExist) {
-          setImageTargetSrc(COMPILED_TARGETS_URL);
-          setStatus("ready");
-          setStatusText("已加载预编译 targets.mind，等待识别目标图。");
-          return;
-        }
-        throw new Error("未找到 /public/targets/targets.mind，无法启动本地 MindAR 扫描。");
+        setImageTargetSrc(COMPILED_TARGETS_URL);
+        setStatus("loading");
+        setStatusText("扫描资源已就绪，正在准备相机...");
       } catch (error) {
         if (cancelled) {
           return;
@@ -288,7 +280,7 @@ export function MindArScanner({
   }, [imageTargetSrc, scannerEnabled, targetRules]);
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${wrapperClassName}`}>
       {showControls ? (
         <div className="flex flex-wrap gap-3">
           <button
