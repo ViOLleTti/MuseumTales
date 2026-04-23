@@ -25,12 +25,16 @@ function SoftChip({
   className = "",
 }: {
   children: React.ReactNode;
-  tone?: "default" | "cream-accent" | "muted";
+  tone?: "default" | "cream-accent" | "muted" | "accent-rose" | "accent-gold";
   className?: string;
 }) {
   const toneClassName =
     tone === "cream-accent"
       ? "bg-[#f1efe7] text-[#527a67] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
+      : tone === "accent-rose"
+        ? "bg-[#f1efe7] text-[#cb7a8d] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
+        : tone === "accent-gold"
+          ? "bg-[#f1efe7] text-[#a68b71] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
       : tone === "muted"
         ? "bg-[#ebe7de] text-[#8a9287] shadow-[inset_2px_2px_4px_#d7d2c8,inset_-2px_-2px_4px_#f7f4ee]"
         : "bg-[#f1efe7] text-[#4e5751] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]";

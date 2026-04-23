@@ -122,7 +122,6 @@ export const NPC_PAGE_COPY = {
   logFallback: { zh: "这段有效对话已记录。", en: "This valid conversation has been saved." },
   keywordFallbacks: {
     clue: { zh: "线索", en: "Clue" },
-    detail: { zh: "细节", en: "Detail" },
   },
 } as const;
 

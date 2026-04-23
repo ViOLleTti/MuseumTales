@@ -37,44 +37,6 @@ const NPC_SCAN_HINTS_EN: Record<NpcId, string> = {
   N3: "Take another walk around the gallery first. Once you find a new clue, we can keep going.",
 };
 
-const DIALOGUE_SECONDARY_TAGS: Record<string, [string, string]> = {
-  "P1-E1-N1-F10": ["库房", "初心"],
-  "P1-E7-N1-F11": ["书法", "船模"],
-  "P1-E2-N2-F12": ["成长", "见证"],
-  "P1-E8-N3-F13": ["水路", "思念"],
-  "P2-E4-N1-F14": ["吉祥", "双关"],
-  "P2-E7-N1-F16": ["字面", "语气"],
-  "P2-E7-N2-F15": ["语气", "留白"],
-  "P2-E7-N3-F17": ["气力", "印刷字"],
-  "P3-E3-N1-F18": ["创造", "智慧"],
-  "P3-E8-N3-F21": ["异乡", "故乡"],
-  "P3-E7-N2-F19": ["线条", "呼吸"],
-  "P3-E5-N2-F20": ["规则", "样子"],
-  "P3-E6-N1-F22": ["协作", "征服"],
-  "P4-E7-N1-F23": ["礼物", "旅程"],
-  "P4-E4-N2-F24": ["瓷器", "停下"],
-  "P4-E5-N3-F25": ["挪动", "参与"],
-};
-
-const DIALOGUE_SECONDARY_TAGS_EN: Record<string, [string, string]> = {
-  "P1-E1-N1-F10": ["Storage", "Origins"],
-  "P1-E7-N1-F11": ["Calligraphy", "Boat Model"],
-  "P1-E2-N2-F12": ["Growth", "Witness"],
-  "P1-E8-N3-F13": ["Waterway", "Longing"],
-  "P2-E4-N1-F14": ["Blessing", "Wordplay"],
-  "P2-E7-N1-F16": ["Wording", "Tone"],
-  "P2-E7-N2-F15": ["Tone", "Negative Space"],
-  "P2-E7-N3-F17": ["Warmth", "Print"],
-  "P3-E3-N1-F18": ["Creation", "Wisdom"],
-  "P3-E8-N3-F21": ["Away", "Home"],
-  "P3-E7-N2-F19": ["Lines", "Breath"],
-  "P3-E5-N2-F20": ["Rules", "Form"],
-  "P3-E6-N1-F22": ["Collaboration", "Conquest"],
-  "P4-E7-N1-F23": ["Gift", "Journey"],
-  "P4-E4-N2-F24": ["Ceramics", "Pause"],
-  "P4-E5-N3-F25": ["Movement", "Participation"],
-};
-
 function buildScanHint(roleId: RoleId, npcId: NpcId, language: "zh" | "en"): DialogueCheckResult {
   return {
     success: true,
@@ -187,16 +149,7 @@ function getDialogueLogTitle(roleId: RoleId, event: DialogueGameEvent, language:
 
 function getDialogueLogChips(roleId: RoleId, event: DialogueGameEvent, language: "zh" | "en") {
   const trigger = getTriggerByRewardClue(roleId, event.clueId, language);
-  const primaryKeyword = trigger?.keywords[0] ?? pickText(NPC_PAGE_COPY.keywordFallbacks.clue, language);
-  const secondaryKeywords = (language === "en" ? DIALOGUE_SECONDARY_TAGS_EN : DIALOGUE_SECONDARY_TAGS)[event.triggerId] ?? [
-    trigger?.keywords[1] ?? pickText(NPC_PAGE_COPY.keywordFallbacks.detail, language),
-    getExhibitRule(event.exhibitId, language).highlightKeyword,
-  ];
-
-  return {
-    primaryKeyword,
-    secondaryKeywords,
-  };
+  return trigger?.keywords[0] ?? pickText(NPC_PAGE_COPY.keywordFallbacks.clue, language);
 }
 
 function SoftChip({
@@ -205,14 +158,20 @@ function SoftChip({
   className = "",
 }: {
   children: React.ReactNode;
-  tone?: "default" | "accent" | "muted" | "cream-accent";
+  tone?: "default" | "accent" | "muted" | "cream-accent" | "accent-rose" | "accent-gold" | "dialogue-primary";
   className?: string;
 }) {
   const toneClassName =
     tone === "cream-accent"
       ? "bg-[#f1efe7] text-[#527a67] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
+      : tone === "dialogue-primary"
+        ? "bg-[#f1efe7] text-[#629bb5] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
+      : tone === "accent-rose"
+        ? "bg-[#f1efe7] text-[#cb7a8d] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
+        : tone === "accent-gold"
+          ? "bg-[#f1efe7] text-[#a68b71] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]"
       : tone === "accent"
-      ? "bg-[#dbe9dd] text-[#527a67] shadow-[inset_2px_2px_4px_#c8d5ca,inset_-2px_-2px_4px_#eff5f0]"
+        ? "bg-[#dbe9dd] text-[#527a67] shadow-[inset_2px_2px_4px_#c8d5ca,inset_-2px_-2px_4px_#eff5f0]"
       : tone === "muted"
         ? "bg-[#ebe7de] text-[#8a9287] shadow-[inset_2px_2px_4px_#d7d2c8,inset_-2px_-2px_4px_#f7f4ee]"
         : "bg-[#f1efe7] text-[#4e5751] shadow-[4px_4px_10px_#d7d2c8,-4px_-4px_10px_#ffffff]";
@@ -496,8 +455,13 @@ export default function NpcPage() {
                   <p className="mt-2 text-sm leading-6 text-[#6d756c]">{currentExhibit.observation}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <SoftChip tone="cream-accent">{currentExhibit.highlightKeyword}</SoftChip>
-                    {currentExhibit.fuzzyKeywords.map((keyword) => (
-                      <SoftChip key={keyword}>{keyword}</SoftChip>
+                    {currentExhibit.fuzzyKeywords.map((keyword, index) => (
+                      <SoftChip
+                        key={keyword}
+                        tone={index === 0 ? "accent-rose" : index === 1 ? "accent-gold" : "default"}
+                      >
+                        {keyword}
+                      </SoftChip>
                     ))}
                   </div>
                 </div>
@@ -513,12 +477,7 @@ export default function NpcPage() {
                       {getDialogueLogResponse(currentRoleId, latestDialogueEvent, language)}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <SoftChip tone="cream-accent">
-                        {getDialogueLogChips(currentRoleId, latestDialogueEvent, language).primaryKeyword}
-                      </SoftChip>
-                      {getDialogueLogChips(currentRoleId, latestDialogueEvent, language).secondaryKeywords.map((keyword) => (
-                        <SoftChip key={keyword}>{keyword}</SoftChip>
-                      ))}
+                      <SoftChip tone="dialogue-primary">{getDialogueLogChips(currentRoleId, latestDialogueEvent, language)}</SoftChip>
                     </div>
                   </>
                 ) : (

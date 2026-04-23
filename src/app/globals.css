@@ -161,6 +161,89 @@ a {
   background: transparent !important;
 }
 
+@keyframes scan-burst-aura {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 16px) scale(0.7);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  68% {
+    opacity: 0.65;
+    transform: translate(-50%, 0) scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(1.18);
+  }
+}
+
+@keyframes scan-burst-pill-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(var(--burst-from-x, 0), var(--burst-from-y, 18px), 0)
+      scale(var(--burst-from-scale, 0.88));
+    filter: blur(8px);
+  }
+  18% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  68% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -16px, 0) scale(0.98);
+    filter: blur(1px);
+  }
+}
+
+@keyframes scan-chip-fly {
+  0% {
+    opacity: 1;
+    transform: translate(var(--fly-start-x, 0), var(--fly-start-y, 0))
+      scale(var(--fly-start-scale, 1));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+.scan-burst-aura {
+  animation: scan-burst-aura 1.8s ease-out both;
+}
+
+.scan-burst-pill {
+  opacity: 0;
+  will-change: transform, opacity, filter;
+  animation: scan-burst-pill-enter 1.8s cubic-bezier(0.2, 0.88, 0.32, 1) both;
+}
+
+.scan-burst-pill-primary {
+  --burst-from-x: 0px;
+  --burst-from-y: 22px;
+  --burst-from-scale: 0.82;
+}
+
+.scan-burst-pill-secondary {
+  --burst-from-x: 18px;
+  --burst-from-y: 12px;
+  --burst-from-scale: 0.9;
+  animation-delay: 140ms;
+}
+
+.scan-burst-pill-tertiary {
+  --burst-from-x: -14px;
+  --burst-from-y: 18px;
+  --burst-from-scale: 0.92;
+  animation-delay: 280ms;
+}
+
 @media (max-width: 520px) {
   .phone-stage {
     padding: 0;
