@@ -9,6 +9,7 @@ const MINDAR_AFRAME_SCRIPT_URL = "/vendor/mindar-image-aframe.prod.js";
 const COMPILED_TARGETS_URL = "/targets/targets.mind";
 
 const scriptCache = new Map<string, Promise<void>>();
+let compiledTargetsWarmupPromise: Promise<void> | null = null;
 
 function loadScriptOnce(src: string): Promise<void> {
   const existingPromise = scriptCache.get(src);
@@ -33,6 +34,27 @@ function loadScriptOnce(src: string): Promise<void> {
 
   scriptCache.set(src, promise);
   return promise;
+}
+
+function warmCompiledTargetsOnce(): Promise<void> {
+  if (compiledTargetsWarmupPromise) {
+    return compiledTargetsWarmupPromise;
+  }
+
+  compiledTargetsWarmupPromise = fetch(COMPILED_TARGETS_URL, { cache: "force-cache" })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error("预加载 targets.mind 失败。");
+      }
+
+      await response.arrayBuffer();
+    })
+    .catch((error) => {
+      compiledTargetsWarmupPromise = null;
+      throw error;
+    });
+
+  return compiledTargetsWarmupPromise;
 }
 
 type ScannerStatus = "idle" | "loading" | "ready" | "error";
@@ -63,6 +85,15 @@ function ensureInlineVideoPlayback(host: HTMLElement) {
   });
 }
 
+function hasVisibleVideoFrame(host: HTMLElement) {
+  const video = host.querySelector("video");
+  if (!video) {
+    return false;
+  }
+
+  return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0;
+}
+
 export function MindArScanner({
   onDetect,
   enabled,
@@ -88,10 +119,11 @@ export function MindArScanner({
   const [status, setStatus] = useState<ScannerStatus>("idle");
   const [statusText, setStatusText] = useState("点击下方按钮启动 MindAR 扫描。");
   const [imageTargetSrc, setImageTargetSrc] = useState<string | null>(null);
+  const [hasVisibleCameraFrame, setHasVisibleCameraFrame] = useState(false);
   const resolvedHostClassName =
     hostClassName || "rounded-[2rem] border-4 border-dashed border-emerald-500 bg-slate-950/90";
   const resolvedStatusClassName = statusClassName || "bg-[rgba(16,17,16,0.72)] text-white";
-  const showCenteredLoadingState = status === "loading";
+  const showCenteredLoadingState = scannerEnabled && !hasVisibleCameraFrame && status !== "error";
 
   const targetRules = useMemo(
     () =>
@@ -119,6 +151,17 @@ export function MindArScanner({
 
   useEffect(() => {
     if (!scannerEnabled) {
+      return;
+    }
+
+    void warmCompiledTargetsOnce().catch(() => {
+      // Surface the eventual error through the normal scanner status flow instead.
+    });
+  }, [scannerEnabled]);
+
+  useEffect(() => {
+    if (!scannerEnabled) {
+      setHasVisibleCameraFrame(false);
       cleanupSceneRef.current?.();
       cleanupSceneRef.current = null;
       if (sceneHostRef.current) {
@@ -134,8 +177,11 @@ export function MindArScanner({
         setStatus("loading");
         setStatusText("正在加载 MindAR 扫描环境...");
 
-        await loadScriptOnce(AFRAME_SCRIPT_URL);
-        await loadScriptOnce(MINDAR_AFRAME_SCRIPT_URL);
+        await Promise.all([
+          loadScriptOnce(AFRAME_SCRIPT_URL),
+          loadScriptOnce(MINDAR_AFRAME_SCRIPT_URL),
+          warmCompiledTargetsOnce(),
+        ]);
 
         if (cancelled) {
           return;
@@ -196,6 +242,8 @@ export function MindArScanner({
     const cleanupCallbacks: Array<() => void> = [];
     let pollingTimer: number | null = null;
 
+    setHasVisibleCameraFrame(hasVisibleVideoFrame(host));
+
     entities.forEach((entity) => {
       const exhibitId = entity.getAttribute("data-exhibit-id") as ExhibitId;
       const handleTargetFound = () => {
@@ -230,6 +278,7 @@ export function MindArScanner({
       setStatus("ready");
       setStatusText("相机已启动，等待识别目标图。");
       ensureInlineVideoPlayback(host);
+      setHasVisibleCameraFrame(hasVisibleVideoFrame(host));
     };
 
     const handleSceneLoaded = () => {
@@ -249,7 +298,10 @@ export function MindArScanner({
           if (pollingTimer !== null) {
             window.clearInterval(pollingTimer);
           }
-          pollingTimer = window.setInterval(() => ensureInlineVideoPlayback(host), 500);
+          pollingTimer = window.setInterval(() => {
+            ensureInlineVideoPlayback(host);
+            setHasVisibleCameraFrame(hasVisibleVideoFrame(host));
+          }, 250);
         })
         .catch(() => {
           setStatus("error");
@@ -269,6 +321,7 @@ export function MindArScanner({
         window.clearInterval(pollingTimer);
         pollingTimer = null;
       }
+      setHasVisibleCameraFrame(false);
       scene?.systems?.["mindar-image-system"]?.stop?.();
       cleanupCallbacks.forEach((cleanup) => cleanup());
       host.innerHTML = "";
@@ -305,7 +358,7 @@ export function MindArScanner({
             <div
               className={`rounded-2xl px-5 py-3 text-sm font-semibold leading-6 backdrop-blur ${resolvedStatusClassName}`}
             >
-              <p>正在加载 MindAR 扫描环境...</p>
+              <p>{status === "idle" ? "正在加载 MindAR 扫描环境..." : statusText}</p>
             </div>
           </div>
         ) : (
