@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { LanguageSync } from "@/components/language-sync";
 import "./globals.css";
 
@@ -17,6 +18,7 @@ export default function RootLayout({
       <body className="antialiased">
         <LanguageSync />
         {children}
+        <Analytics />
       </body>
     </html>
   );
