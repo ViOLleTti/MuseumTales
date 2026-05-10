@@ -163,7 +163,7 @@ function mapRunToLeaderboardItem(
   return {
     rank,
     playerId: row.player_id,
-    nickname: nicknameByPlayerId.get(row.player_id) ?? "匿名玩家",
+    nickname: nicknameByPlayerId.get(row.player_id) ?? "Anonymous Player",
     roleId: row.role_id,
     storyId: row.story_id,
     storyTitle: row.story_title,

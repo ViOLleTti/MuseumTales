@@ -28,7 +28,7 @@ function loadScriptOnce(src: string): Promise<void> {
     script.src = src;
     script.async = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`加载脚本失败：${src}`));
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
     document.head.appendChild(script);
   });
 
@@ -44,7 +44,7 @@ function warmCompiledTargetsOnce(): Promise<void> {
   compiledTargetsWarmupPromise = fetch(COMPILED_TARGETS_URL, { cache: "force-cache" })
     .then(async (response) => {
       if (!response.ok) {
-        throw new Error("预加载 targets.mind 失败。");
+        throw new Error("Failed to preload targets.mind.");
       }
 
       await response.arrayBuffer();
@@ -117,7 +117,7 @@ export function MindArScanner({
   const onDetectRef = useRef(onDetect);
   const [scannerEnabled, setScannerEnabled] = useState(enabled ?? autoStart);
   const [status, setStatus] = useState<ScannerStatus>("idle");
-  const [statusText, setStatusText] = useState("点击下方按钮启动 MindAR 扫描。");
+  const [statusText, setStatusText] = useState("Tap the button below to start MindAR scanning.");
   const [imageTargetSrc, setImageTargetSrc] = useState<string | null>(null);
   const [hasVisibleCameraFrame, setHasVisibleCameraFrame] = useState(false);
   const resolvedHostClassName =
@@ -175,7 +175,7 @@ export function MindArScanner({
     async function prepareMindAr() {
       try {
         setStatus("loading");
-        setStatusText("正在加载 MindAR 扫描环境...");
+        setStatusText("Loading the MindAR scanning environment...");
 
         await Promise.all([
           loadScriptOnce(AFRAME_SCRIPT_URL),
@@ -189,13 +189,13 @@ export function MindArScanner({
 
         setImageTargetSrc(COMPILED_TARGETS_URL);
         setStatus("loading");
-        setStatusText("扫描资源已就绪，正在准备相机...");
+        setStatusText("Scan assets are ready. Preparing the camera...");
       } catch (error) {
         if (cancelled) {
           return;
         }
         setStatus("error");
-        setStatusText(error instanceof Error ? error.message : "MindAR 初始化失败。");
+        setStatusText(error instanceof Error ? error.message : "MindAR initialization failed.");
       }
     }
 
@@ -259,7 +259,7 @@ export function MindArScanner({
 
         lastDetectedRef.current = { exhibitId, at: now };
         setStatus("ready");
-        setStatusText(`识别成功：${exhibitId}`);
+        setStatusText(`Detected: ${exhibitId}`);
         onDetectRef.current(exhibitId);
       };
 
@@ -271,12 +271,12 @@ export function MindArScanner({
 
     const handleSceneError = () => {
       setStatus("error");
-      setStatusText("MindAR 运行出错，请检查相机权限或 target 文件。");
+      setStatusText("MindAR encountered an error. Check camera permission or the target file.");
     };
 
     const handleSceneReady = () => {
       setStatus("ready");
-      setStatusText("相机已启动，等待识别目标图。");
+      setStatusText("Camera started. Waiting for a target image.");
       ensureInlineVideoPlayback(host);
       setHasVisibleCameraFrame(hasVisibleVideoFrame(host));
     };
@@ -285,12 +285,12 @@ export function MindArScanner({
       const arSystem = scene?.systems?.["mindar-image-system"];
       if (!arSystem?.start) {
         setStatus("error");
-        setStatusText("MindAR 系统没有正确初始化。");
+        setStatusText("The MindAR system did not initialize correctly.");
         return;
       }
 
       setStatus("loading");
-      setStatusText("正在启动相机视频流...");
+      setStatusText("Starting the camera video stream...");
 
       void Promise.resolve(arSystem.start())
         .then(() => {
@@ -305,7 +305,7 @@ export function MindArScanner({
         })
         .catch(() => {
           setStatus("error");
-          setStatusText("MindAR 启动失败，请刷新后重试。");
+          setStatusText("MindAR failed to start. Refresh and try again.");
         });
     };
 
@@ -342,7 +342,7 @@ export function MindArScanner({
             onClick={() => setScannerEnabled((value) => !value)}
             className="rounded-2xl bg-[#cdee71] px-5 py-3 text-sm font-semibold text-[#101110] transition hover:bg-[#d8f290]"
           >
-            {scannerEnabled ? "关闭 MindAR 扫描" : "启动 MindAR 扫描"}
+            {scannerEnabled ? "Stop MindAR Scan" : "Start MindAR Scan"}
           </button>
         </div>
       ) : null}
@@ -358,7 +358,7 @@ export function MindArScanner({
             <div
               className={`rounded-2xl px-5 py-3 text-sm font-semibold leading-6 backdrop-blur ${resolvedStatusClassName}`}
             >
-              <p>{status === "idle" ? "正在加载 MindAR 扫描环境..." : statusText}</p>
+              <p>{status === "idle" ? "Loading the MindAR scanning environment..." : statusText}</p>
             </div>
           </div>
         ) : (

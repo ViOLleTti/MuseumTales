@@ -13,13 +13,21 @@ interface UiState {
 export const useUiStore = create<UiState>()(
   persist(
     (set, get) => ({
-      language: "zh",
+      language: "en",
       setLanguage: (language) => set({ language }),
       toggleLanguage: () => set({ language: get().language === "en" ? "zh" : "en" }),
     }),
     {
       name: "museum-ui-language",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<UiState> | undefined;
+        return {
+          ...state,
+          language: "en",
+        };
+      },
     },
   ),
 );
